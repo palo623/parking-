@@ -17,29 +17,31 @@ Web para reservar plazas de parking.
 
 ## Puesta en marcha
 
-### 1. Supabase
-1. Crea un proyecto en [supabase.com](https://supabase.com).
-2. Ve a **SQL Editor → New query**, pega el contenido de `supabase/schema.sql` y pulsa **Run**.
-3. En **Project Settings → API** copia la *Project URL*, la clave *anon public* y la clave *service_role*.
-4. (Opcional, para pruebas) En **Authentication → Providers → Email** puedes desactivar *Confirm email*.
+La base de datos ya está creada en el proyecto de Supabase `qlhqrjbdufqwvzqlsosi`, y el front end y el backend ya traen su URL y su clave pública (anon). **No hace falta ningún archivo `.env`.**
 
-### 2. Backend
+Abre dos terminales en Visual Studio Code (Terminal → Nueva terminal):
+
 ```bash
+# Terminal 1 - backend (http://localhost:4000)
 cd backend
-cp .env.example .env      # en Windows: copy .env.example .env
-# rellena SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY
 npm install
-npm run dev               # http://localhost:4000
+npm run dev
 ```
 
-### 3. Front end
 ```bash
+# Terminal 2 - front end (http://localhost:5173)
 cd frontend
-cp .env.example .env      # en Windows: copy .env.example .env
-# rellena VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY
 npm install
-npm run dev               # http://localhost:5173
+npm run dev
 ```
+
+Abre http://localhost:5173 y crea tu cuenta.
+
+> Si Supabase te pide confirmar el email al registrarte y no quieres esperar, desactívalo en
+> Supabase → Authentication → Sign In / Providers → Email → *Confirm email*.
+
+### Base de datos desde cero (solo si usas otro proyecto)
+En Supabase → SQL Editor ejecuta, en este orden, `supabase/schema.sql` y `supabase/02_funciones_y_permisos.sql`.
 
 ### 4. Hacerte administrador
 Regístrate en la web y después ejecuta en el SQL Editor de Supabase:
@@ -63,4 +65,4 @@ where id = (select id from auth.users where email = 'TU_EMAIL');
 | GET / POST | `/api/admin/plazas` | admin |
 | PATCH | `/api/admin/plazas/:id` | admin |
 
-> ⚠️ La clave `service_role` va **solo** en `backend/.env`. Los archivos `.env` no se suben a GitHub.
+> 🔒 No se usa la clave secreta `service_role`: la seguridad está en la base de datos (políticas RLS y funciones), así que la clave anon puede ir en el código sin riesgo.

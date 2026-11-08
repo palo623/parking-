@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { supabase } from '../supabase.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../utils.js';
 
@@ -15,7 +14,7 @@ router.patch('/', asyncHandler(async (req, res) => {
   if (typeof req.body?.nombre === 'string') cambios.nombre = req.body.nombre.trim().slice(0, 80);
   if (typeof req.body?.telefono === 'string') cambios.telefono = req.body.telefono.trim().slice(0, 20);
 
-  const { data, error } = await supabase
+  const { data, error } = await req.db
     .from('perfiles')
     .update(cambios)
     .eq('id', req.user.id)

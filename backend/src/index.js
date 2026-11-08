@@ -5,6 +5,7 @@ import plazasRouter from './routes/plazas.js';
 import reservasRouter from './routes/reservas.js';
 import perfilRouter from './routes/perfil.js';
 import adminRouter from './routes/admin.js';
+import { respuestaDeError } from './utils.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -23,8 +24,9 @@ app.use((_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 // Manejador de errores
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).json({ error: 'Error interno del servidor' });
+  const [estado, mensaje] = respuestaDeError(err);
+  if (estado === 500) console.error(err);
+  res.status(estado).json({ error: mensaje });
 });
 
 app.listen(PORT, () => console.log(`API del parking en http://localhost:${PORT}`));

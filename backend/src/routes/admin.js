@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { supabase } from '../supabase.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { asyncHandler } from '../utils.js';
 
@@ -9,15 +8,15 @@ router.use(requireAuth, requireAdmin);
 const TIPOS = ['normal', 'moto', 'electrico', 'discapacitados'];
 
 // GET /api/admin/resumen
-router.get('/resumen', asyncHandler(async (_req, res) => {
+router.get('/resumen', asyncHandler(async (req, res) => {
   const ahora = new Date().toISOString();
   const [plazas, activasAhora, confirmadas, ingresos] = await Promise.all([
-    supabase.from('plazas').select('id', { count: 'exact', head: true }).eq('activa', true),
-    supabase.from('reservas').select('id', { count: 'exact', head: true })
+    req.db.from('plazas').select('id', { count: 'exact', head: true }).eq('activa', true),
+    req.db.from('reservas').select('id', { count: 'exact', head: true })
       .eq('estado', 'confirmada').lte('inicio', ahora).gt('fin', ahora),
-    supabase.from('reservas').select('id', { count: 'exact', head: true })
+    req.db.from('reservas').select('id', { count: 'exact', head: true })
       .eq('estado', 'confirmada').gt('fin', ahora),
-    supabase.from('reservas').select('precio_total').neq('estado', 'cancelada'),
+    req.db.from('reservas').select('precio_total').neq('estado', 'cancelada'),
   ]);
   for (const r of [plazas, activasAhora, confirmadas, ingresos]) if (r.error) throw r.error;
 
@@ -30,8 +29,8 @@ router.get('/resumen', asyncHandler(async (_req, res) => {
 }));
 
 // GET /api/admin/reservas
-router.get('/reservas', asyncHandler(async (_req, res) => {
-  const { data, error } = await supabase
+router.get('/reservas', asyncHandler(async (req, res) => {
+  const { data, error } = await req.db
     .from('reservas')
     .select('id, matricula, inicio, fin, precio_total, estado, plaza:plazas(codigo), usuario:perfiles(nombre, telefono)')
     .order('inicio', { ascending: false })
@@ -46,7 +45,7 @@ router.patch('/reservas/:id', asyncHandler(async (req, res) => {
   if (!['confirmada', 'cancelada', 'completada'].includes(estado)) {
     return res.status(400).json({ error: 'Estado no válido' });
   }
-  const { data, error } = await supabase.from('reservas').update({ estado }).eq('id', req.params.id).select().single();
+  const { data, error } = await req.db.from('reservas').update({ estado }).eq('id', req.params.id).select().single();
   if (error) {
     if (error.code === '23P01') return res.status(409).json({ error: 'Se solaparía con otra reserva' });
     throw error;
@@ -55,8 +54,8 @@ router.patch('/reservas/:id', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/admin/plazas (incluye inactivas)
-router.get('/plazas', asyncHandler(async (_req, res) => {
-  const { data, error } = await supabase.from('plazas').select('*').order('codigo');
+router.get('/plazas', asyncHandler(async (req, res) => {
+  const { data, error } = await req.db.from('plazas').select('*').order('codigo');
   if (error) throw error;
   res.json(data);
 }));
@@ -81,7 +80,7 @@ function validarPlaza(body, parcial = false) {
 router.post('/plazas', asyncHandler(async (req, res) => {
   const { plaza, error: msg } = validarPlaza(req.body || {});
   if (msg) return res.status(400).json({ error: msg });
-  const { data, error } = await supabase.from('plazas').insert(plaza).select().single();
+  const { data, error } = await req.db.from('plazas').insert(plaza).select().single();
   if (error) {
     if (error.code === '23505') return res.status(409).json({ error: 'Ya existe una plaza con ese código' });
     throw error;
@@ -93,7 +92,7 @@ router.post('/plazas', asyncHandler(async (req, res) => {
 router.patch('/plazas/:id', asyncHandler(async (req, res) => {
   const { plaza, error: msg } = validarPlaza(req.body || {}, true);
   if (msg) return res.status(400).json({ error: msg });
-  const { data, error } = await supabase.from('plazas').update(plaza).eq('id', req.params.id).select().single();
+  const { data, error } = await req.db.from('plazas').update(plaza).eq('id', req.params.id).select().single();
   if (error) {
     if (error.code === '23505') return res.status(409).json({ error: 'Ya existe una plaza con ese código' });
     throw error;
