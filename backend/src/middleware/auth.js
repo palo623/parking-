@@ -13,7 +13,7 @@ export async function requireAuth(req, res, next) {
     req.db = clienteDeUsuario(token);
     const { data: perfil } = await req.db
       .from('perfiles')
-      .select('id, nombre, telefono, rol')
+      .select('id, nombre, telefono, email, rol')
       .eq('id', data.user.id)
       .single();
 

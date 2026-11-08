@@ -10,10 +10,29 @@ Web para reservar plazas de parking.
 
 ## Qué hace
 
-- **Clientes:** crear cuenta, buscar plazas libres por fecha/hora y tipo, ver el precio exacto, reservar con matrícula, ver y cancelar sus reservas, editar su perfil.
-- **Administrador:** resumen (plazas, ocupación, ingresos), lista de todas las reservas con buscador y cambio de estado, alta de plazas, cambio de precio y activar/desactivar plazas.
-- La base de datos impide que dos reservas confirmadas se solapen en la misma plaza.
-- El precio se calcula por cuartos de hora.
+**Clientes**
+- Portada con buscador, tarifas en vivo, preguntas frecuentes y modo claro/oscuro.
+- **Mapa visual del parking** por plantas: plazas libres en verde, ocupadas en gris, filtro por tipo (normal, eléctrico, moto, movilidad reducida) y botón "elegir la más barata".
+- Atajos de duración (1 h, 2 h, 4 h, 8 h, 24 h) y precio exacto antes de confirmar.
+- **Ticket con código QR**, imprimible y con botón para añadirlo al calendario (.ics).
+- Mis reservas: próximas / historial, cuenta atrás, cancelación con confirmación.
+- Perfil: datos personales, **vehículos guardados** (se ofrecen al reservar) y cambio de contraseña.
+- Registro con medidor de seguridad de contraseña y **recuperación de contraseña** por email.
+
+**Administrador**
+- Resumen: ocupación actual, reservas pendientes, ingresos, **gráfica de ingresos de 14 días**, ocupación por planta y mapa del parking en tiempo real.
+- Reservas: buscador, filtro por estado, cambio de estado y **exportación a CSV**.
+- Plazas: alta, edición (código, planta, tipo, precio) y activar/desactivar.
+- Usuarios: lista con buscador y dar/quitar rol de administrador.
+
+**Asistente virtual (Google Gemini)**
+- Burbuja de chat en todas las páginas. Responde dudas sobre reservas, precios, cancelaciones y problemas.
+- Si el usuario ha iniciado sesión, conoce sus reservas y puede contestar cosas como "¿a qué hora es mi reserva?".
+- La clave de Google se queda en el backend: el navegador nunca la ve. Máximo 30 mensajes cada 10 minutos por IP.
+
+**Seguridad**
+- Reglas RLS y funciones en la base de datos: precio calculado en el servidor, sin solapes, cada usuario solo ve lo suyo.
+- Backend con `helmet` y límite de peticiones (300 / 15 min por IP, 20 reservas / hora).
 
 ## Puesta en marcha
 
@@ -35,13 +54,22 @@ npm install
 npm run dev
 ```
 
-Abre http://localhost:5173 y crea tu cuenta.
+Abre http://localhost:5173 y crea tu cuenta. El asistente se activa al añadir la clave de Google (ver abajo).
 
 > Si Supabase te pide confirmar el email al registrarte y no quieres esperar, desactívalo en
 > Supabase → Authentication → Sign In / Providers → Email → *Confirm email*.
 
+### Activar el asistente (chatbot)
+1. Consigue una clave gratis en [Google AI Studio](https://aistudio.google.com/apikey) → *Create API key*.
+2. En la carpeta `backend`, copia `.env.example` como `.env` (en Windows: `copy .env.example .env`).
+3. Pega la clave en la línea `GEMINI_API_KEY=` y guarda.
+4. Reinicia el backend (`Ctrl + C` y `npm run dev`). En la terminal verás *"Asistente Gemini activo"*.
+
+El modelo por defecto es `gemini-flash-lite-latest` (siempre el Flash-Lite más reciente). Para fijar otro, cambia `GEMINI_MODEL` en el mismo archivo, por ejemplo `GEMINI_MODEL=gemini-3.5-flash-lite`.
+
 ### Base de datos desde cero (solo si usas otro proyecto)
-En Supabase → SQL Editor ejecuta, en este orden, `supabase/schema.sql` y `supabase/02_funciones_y_permisos.sql`.
+En Supabase → SQL Editor ejecuta, en este orden: `supabase/schema.sql`, `supabase/02_funciones_y_permisos.sql` y `supabase/03_mejoras.sql`.
+Después, en Authentication → URL Configuration, pon como *Site URL* la dirección de la web (en local `http://localhost:5173`) y añádela a *Redirect URLs* con `/**` al final.
 
 ### 4. Hacerte administrador
 Regístrate en la web y después ejecuta en el SQL Editor de Supabase:
@@ -56,6 +84,13 @@ where id = (select id from auth.users where email = 'TU_EMAIL');
 |---|---|---|
 | GET | `/api/plazas` | público |
 | GET | `/api/plazas/disponibles?inicio=&fin=&tipo=` | público |
+| GET | `/api/plazas/mapa?inicio=&fin=` | público |
+| GET / POST / DELETE | `/api/vehiculos` | usuario |
+| GET | `/api/reservas/:id` | usuario |
+| GET | `/api/admin/estadisticas?dias=14` | admin |
+| GET / PATCH | `/api/admin/usuarios` | admin |
+| GET | `/api/chat/estado` | público |
+| POST | `/api/chat` | público (usa la sesión si la hay) |
 | GET / POST | `/api/reservas` | usuario |
 | PATCH | `/api/reservas/:id/cancelar` | usuario |
 | GET / PATCH | `/api/perfil` | usuario |

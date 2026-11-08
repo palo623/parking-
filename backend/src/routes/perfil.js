@@ -18,7 +18,7 @@ router.patch('/', asyncHandler(async (req, res) => {
     .from('perfiles')
     .update(cambios)
     .eq('id', req.user.id)
-    .select('id, nombre, telefono, rol')
+    .select('id, nombre, telefono, email, rol')
     .single();
   if (error) throw error;
   res.json({ ...data, email: req.user.email });

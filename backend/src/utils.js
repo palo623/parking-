@@ -8,6 +8,9 @@ export function parseRango(inicioStr, finStr) {
   return { inicio, fin };
 }
 
+export const MATRICULA_RE = /^[A-Z0-9-]{4,10}$/;
+export const normalizarMatricula = (m) => String(m || '').toUpperCase().replace(/\s+/g, '');
+
 export function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }

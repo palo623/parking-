@@ -39,6 +39,19 @@ router.post('/', asyncHandler(async (req, res) => {
   res.status(201).json(data);
 }));
 
+// GET /api/reservas/:id → una reserva (para el ticket)
+router.get('/:id', asyncHandler(async (req, res) => {
+  const { data, error } = await req.db
+    .from('reservas')
+    .select(CAMPOS)
+    .eq('id', req.params.id)
+    .eq('usuario_id', req.user.id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return res.status(404).json({ error: 'Reserva no encontrada' });
+  res.json(data);
+}));
+
 // PATCH /api/reservas/:id/cancelar
 router.patch('/:id/cancelar', asyncHandler(async (req, res) => {
   const { error } = await req.db.rpc('cancelar_reserva', { p_id: Number(req.params.id) });

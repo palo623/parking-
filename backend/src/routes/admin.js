@@ -32,7 +32,7 @@ router.get('/resumen', asyncHandler(async (req, res) => {
 router.get('/reservas', asyncHandler(async (req, res) => {
   const { data, error } = await req.db
     .from('reservas')
-    .select('id, matricula, inicio, fin, precio_total, estado, plaza:plazas(codigo), usuario:perfiles(nombre, telefono)')
+    .select('id, matricula, inicio, fin, precio_total, estado, plaza:plazas(codigo), usuario:perfiles(nombre, telefono, email)')
     .order('inicio', { ascending: false })
     .limit(200);
   if (error) throw error;
@@ -97,6 +97,45 @@ router.patch('/plazas/:id', asyncHandler(async (req, res) => {
     if (error.code === '23505') return res.status(409).json({ error: 'Ya existe una plaza con ese código' });
     throw error;
   }
+  res.json(data);
+}));
+
+// GET /api/admin/estadisticas?dias=14 → ingresos por día y ocupación actual por planta
+router.get('/estadisticas', asyncHandler(async (req, res) => {
+  const dias = Math.min(Math.max(parseInt(req.query.dias, 10) || 14, 1), 90);
+  const [ingresos, plantas] = await Promise.all([
+    req.db.rpc('admin_ingresos_diarios', { p_dias: dias }),
+    req.db.rpc('admin_ocupacion_plantas'),
+  ]);
+  if (ingresos.error) throw ingresos.error;
+  if (plantas.error) throw plantas.error;
+  res.json({ ingresos_diarios: ingresos.data, ocupacion_plantas: plantas.data });
+}));
+
+// GET /api/admin/usuarios
+router.get('/usuarios', asyncHandler(async (req, res) => {
+  const { data, error } = await req.db
+    .from('perfiles')
+    .select('id, nombre, email, telefono, rol, creado_en')
+    .order('creado_en', { ascending: false });
+  if (error) throw error;
+  res.json(data);
+}));
+
+// PATCH /api/admin/usuarios/:id { rol }
+router.patch('/usuarios/:id', asyncHandler(async (req, res) => {
+  const { rol } = req.body || {};
+  if (!['cliente', 'admin'].includes(rol)) return res.status(400).json({ error: 'Rol no válido' });
+  if (req.params.id === req.user.id && rol !== 'admin') {
+    return res.status(400).json({ error: 'No puedes quitarte a ti mismo el rol de administrador' });
+  }
+  const { data, error } = await req.db
+    .from('perfiles')
+    .update({ rol })
+    .eq('id', req.params.id)
+    .select('id, nombre, email, telefono, rol, creado_en')
+    .single();
+  if (error) throw error;
   res.json(data);
 }));
 

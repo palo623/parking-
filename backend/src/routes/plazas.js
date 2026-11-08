@@ -15,6 +15,19 @@ router.get('/', asyncHandler(async (_req, res) => {
   res.json(data);
 }));
 
+// GET /api/plazas/mapa?inicio=...&fin=... → todas las plazas con su estado (libre / ocupada)
+router.get('/mapa', asyncHandler(async (req, res) => {
+  const rango = parseRango(req.query.inicio, req.query.fin);
+  if (rango.error) return res.status(400).json({ error: rango.error });
+
+  const { data, error } = await supabase.rpc('estado_plazas', {
+    p_inicio: rango.inicio.toISOString(),
+    p_fin: rango.fin.toISOString(),
+  });
+  if (error) throw error;
+  res.json(data);
+}));
+
 // GET /api/plazas/disponibles?inicio=...&fin=...&tipo=...
 router.get('/disponibles', asyncHandler(async (req, res) => {
   const rango = parseRango(req.query.inicio, req.query.fin);

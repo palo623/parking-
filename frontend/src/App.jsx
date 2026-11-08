@@ -1,35 +1,59 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar.jsx';
+import Pie from './components/Pie.jsx';
+import Chat from './components/Chat.jsx';
 import RutaProtegida from './components/RutaProtegida.jsx';
 import Inicio from './pages/Inicio.jsx';
+import Reservar from './pages/Reservar.jsx';
+import Ticket from './pages/Ticket.jsx';
 import Login from './pages/Login.jsx';
 import Registro from './pages/Registro.jsx';
+import Recuperar from './pages/Recuperar.jsx';
+import NuevaContrasena from './pages/NuevaContrasena.jsx';
 import MisReservas from './pages/MisReservas.jsx';
 import Perfil from './pages/Perfil.jsx';
 import Admin from './pages/Admin.jsx';
-import { supabaseConfigurado } from './supabase.js';
+import NoEncontrada from './pages/NoEncontrada.jsx';
+import { useAuth } from './context/AuthContext.jsx';
+
+const SIN_PIE = ['/login', '/registro', '/recuperar', '/nueva-contrasena'];
 
 export default function App() {
+  const { pathname } = useLocation();
+  const { recuperando } = useAuth();
+  const navigate = useNavigate();
+
+  // Volver arriba al cambiar de página
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  // Si el usuario llega desde el email de recuperar contraseña
+  useEffect(() => {
+    if (recuperando && pathname !== '/nueva-contrasena') navigate('/nueva-contrasena');
+  }, [recuperando, pathname, navigate]);
+
   return (
     <>
       <Navbar />
-      {!supabaseConfigurado && (
-        <div className="aviso">
-          Falta configurar Supabase: copia <code>frontend/.env.example</code> como <code>frontend/.env</code> y rellena las claves.
-        </div>
-      )}
-      <main className="contenedor">
+      <main key={pathname} className="aparecer">
         <Routes>
           <Route path="/" element={<Inicio />} />
+          <Route path="/reservar" element={<Reservar />} />
           <Route path="/login" element={<Login />} />
           <Route path="/registro" element={<Registro />} />
+          <Route path="/recuperar" element={<Recuperar />} />
+          <Route path="/nueva-contrasena" element={<NuevaContrasena />} />
+          <Route path="/reserva/:id" element={<RutaProtegida><Ticket /></RutaProtegida>} />
           <Route path="/mis-reservas" element={<RutaProtegida><MisReservas /></RutaProtegida>} />
           <Route path="/perfil" element={<RutaProtegida><Perfil /></RutaProtegida>} />
           <Route path="/admin" element={<RutaProtegida admin><Admin /></RutaProtegida>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NoEncontrada />} />
         </Routes>
       </main>
-      <footer className="pie">© {new Date().getFullYear()} Parking · Reserva tu plaza online</footer>
+      {!SIN_PIE.includes(pathname) && <Pie />}
+      <Chat />
     </>
   );
 }
