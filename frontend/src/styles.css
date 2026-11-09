@@ -407,7 +407,7 @@ textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
 .saltar { position: absolute; left: 12px; top: -60px; z-index: 300; background: var(--primario); color: #fff; padding: 10px 16px; border-radius: 10px; font-weight: 700; }
 .saltar:focus { top: 12px; text-decoration: none; }
 .boton-arriba {
-  position: fixed; right: 30px; bottom: 96px; z-index: 80; width: 44px; height: 44px; border-radius: 50%;
+  position: fixed; right: 30px; bottom: calc(96px + var(--alto-cookies, 0px)); z-index: 80; width: 44px; height: 44px; border-radius: 50%;
   border: 1px solid var(--borde); background: var(--superficie); color: var(--texto); box-shadow: var(--sombra);
   display: grid; place-items: center; cursor: pointer; opacity: 0; transform: translateY(10px); pointer-events: none;
   transition: opacity var(--transicion), transform var(--transicion);
@@ -581,14 +581,14 @@ td select { padding: 6px 8px; width: auto; }
 
 /* ---------- Asistente (chat) ---------- */
 .chat-boton {
-  position: fixed; right: 22px; bottom: 22px; z-index: 90; width: 60px; height: 60px; border-radius: 50%; border: 0; cursor: pointer;
+  position: fixed; right: 22px; bottom: calc(22px + var(--alto-cookies, 0px)); z-index: 160; width: 60px; height: 60px; border-radius: 50%; border: 0; cursor: pointer;
   display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  box-shadow: 0 12px 28px rgba(37, 99, 235, .45); transition: transform var(--transicion);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, .45); transition: transform var(--transicion), bottom .25s ease;
 }
 .chat-boton:hover { transform: scale(1.06); }
 .chat-boton:not(.abierto)::after { content: ''; position: absolute; top: 4px; right: 4px; width: 13px; height: 13px; border-radius: 50%; background: var(--acento); border: 2px solid var(--superficie); }
 .chat {
-  position: fixed; right: 22px; bottom: 96px; z-index: 90; width: 380px; max-width: calc(100vw - 24px); height: 560px; max-height: calc(100vh - 120px);
+  position: fixed; right: 22px; bottom: calc(96px + var(--alto-cookies, 0px)); z-index: 170; width: 380px; max-width: calc(100vw - 24px); height: 560px; max-height: calc(100vh - 120px);
   display: flex; flex-direction: column; background: var(--superficie); border: 1px solid var(--borde); border-radius: 20px;
   box-shadow: var(--sombra-grande); overflow: hidden; animation: subir .2s ease;
 }

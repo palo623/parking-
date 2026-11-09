@@ -16,6 +16,8 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.disable('x-powered-by');
+// En producción detrás de un proxy (Render, Railway, Nginx…) pon TRUST_PROXY=1 en el .env
+if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
 app.use(helmet());
 app.use(cors({ origin: (process.env.FRONTEND_URL || 'http://localhost:5173').split(',') }));
 app.use(express.json({ limit: '20kb' }));
@@ -38,7 +40,6 @@ app.use('/api', publicoRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 
-// eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {
   const [estado, mensaje] = respuestaDeError(err);
   if (estado === 500) console.error(err);

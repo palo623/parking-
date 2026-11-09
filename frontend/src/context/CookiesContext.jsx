@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Icono from '../components/Icono.jsx';
 import Modal from '../components/Modal.jsx';
@@ -31,13 +31,31 @@ export function CookiesProvider({ children }) {
   const [consentimiento, setConsentimiento] = useState(leer);
   const [panel, setPanel] = useState(false);
   const [borrador, setBorrador] = useState({ preferencias: true, terceros: true });
+  const bannerRef = useRef(null);
+  const bannerVisible = !consentimiento && !panel;
+
+  // Sube el chat y el botón "arriba" por encima del aviso mientras se ve
+  useEffect(() => {
+    const raiz = document.documentElement;
+    const el = bannerRef.current;
+    if (!bannerVisible || !el) {
+      raiz.style.setProperty('--alto-cookies', '0px');
+      return;
+    }
+    const medir = () => raiz.style.setProperty('--alto-cookies', `${el.offsetHeight + 16}px`);
+    medir();
+    const obs = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(medir) : null;
+    obs?.observe(el);
+    return () => obs?.disconnect();
+  }, [bannerVisible]);
 
   const guardar = (opciones) => {
     const c = { version: VERSION, fecha: new Date().toISOString(), preferencias: !!opciones.preferencias, terceros: !!opciones.terceros };
     try { localStorage.setItem(CLAVE, JSON.stringify(c)); } catch { /* sin almacenamiento */ }
-    if (!c.preferencias) {
-      try { localStorage.removeItem('tema'); } catch { /* nada */ }
-    }
+    try {
+      if (c.preferencias) localStorage.setItem('tema', document.documentElement.dataset.theme === 'dark' ? 'oscuro' : 'claro');
+      else localStorage.removeItem('tema');
+    } catch { /* sin almacenamiento */ }
     setConsentimiento(c);
     setPanel(false);
   };
@@ -60,8 +78,8 @@ export function CookiesProvider({ children }) {
     <CookiesContext.Provider value={valor}>
       {children}
 
-      {!consentimiento && !panel && (
-        <div className="cookies-banner" role="dialog" aria-label="Aviso de cookies">
+      {bannerVisible && (
+        <div ref={bannerRef} className="cookies-banner" role="dialog" aria-label="Aviso de cookies">
           <div className="cookies-texto">
             <span className="cookies-icono"><Icono nombre="galleta" tam={22} /></span>
             <p>

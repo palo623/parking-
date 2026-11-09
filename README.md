@@ -83,7 +83,7 @@ Abre http://localhost:5173 y crea tu cuenta. El asistente se activa al añadir l
 El modelo por defecto es `gemini-flash-lite-latest` (siempre el Flash-Lite más reciente). Para fijar otro, cambia `GEMINI_MODEL` en el mismo archivo, por ejemplo `GEMINI_MODEL=gemini-3.5-flash-lite`.
 
 ### Base de datos desde cero (solo si usas otro proyecto)
-En Supabase → SQL Editor ejecuta, en este orden: `supabase/schema.sql`, `supabase/02_funciones_y_permisos.sql`, `supabase/03_mejoras.sql` y `supabase/04_valoraciones_contacto.sql`.
+En Supabase → SQL Editor ejecuta, en este orden: `supabase/schema.sql`, `supabase/02_funciones_y_permisos.sql`, `supabase/03_mejoras.sql`, `supabase/04_valoraciones_contacto.sql` y `supabase/05_seguridad.sql`.
 Después, en Authentication → URL Configuration, pon como *Site URL* la dirección de la web (en local `http://localhost:5173`) y añádela a *Redirect URLs* con `/**` al final.
 
 ### 4. Hacerte administrador
