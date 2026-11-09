@@ -3,7 +3,9 @@ import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import Icono from '../components/Icono.jsx';
-import { NEGOCIO, urlMapa } from '../config.js';
+import { Link } from 'react-router-dom';
+import MapaOSM from '../components/MapaOSM.jsx';
+import { NEGOCIO } from '../config.js';
 
 const ASUNTOS = ['Consulta general', 'Problema con una reserva', 'Facturación y cobros', 'Objetos perdidos', 'Abonos y empresas', 'Otro'];
 
@@ -80,6 +82,10 @@ export default function Contacto() {
                 <textarea name="mensaje" value={form.mensaje} onChange={cambiar} required minLength={5} maxLength={2000} rows={6} placeholder="Cuéntanos qué necesitas. Si es sobre una reserva, indica su número (#)." />
                 <span className="campo-ayuda" style={{ textAlign: 'right' }}>{form.mensaje.length} / 2000</span>
               </label>
+              <label className="check">
+                <input type="checkbox" required />
+                <span>He leído y acepto la <Link to="/privacidad" target="_blank">política de privacidad</Link>.</span>
+              </label>
               {/* Campo trampa anti-spam: oculto para personas */}
               <input name="web" value={form.web} onChange={cambiar} tabIndex={-1} autoComplete="off" className="trampa" aria-hidden="true" />
               <button className="btn btn-grande" disabled={enviando}>
@@ -101,9 +107,7 @@ export default function Contacto() {
             <div className="dato-llegar"><Icono nombre="ubicacion" /><div><strong>{NEGOCIO.direccion}</strong><small>{NEGOCIO.ciudad}</small></div></div>
             <div className="dato-llegar"><Icono nombre="reloj" /><div><strong>Horario</strong><small>{NEGOCIO.horario}</small></div></div>
           </div>
-          <div className="mapa-embebido pequeno">
-            <iframe title="Mapa del parking" src={urlMapa(0.004)} loading="lazy" />
-          </div>
+          <MapaOSM zoom={0.004} pequeno />
         </aside>
       </div>
     </div>

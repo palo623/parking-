@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Icono from './Icono.jsx';
@@ -117,7 +118,7 @@ export default function Chat() {
             <button className="btn btn-icono" disabled={!texto.trim() || escribiendo || !activo} aria-label="Enviar"><Icono nombre="enviar" tam={18} /></button>
           </form>
           <p className="chat-aviso">
-            Respuestas generadas con IA; pueden contener errores. {!session && 'Entra en tu cuenta para que pueda consultar tus reservas.'}
+            Respuestas generadas con IA (Google Gemini); pueden contener errores. No compartas datos sensibles. <Link to="/privacidad">Privacidad</Link>. {!session && 'Entra en tu cuenta para que pueda consultar tus reservas.'}
           </p>
         </section>
       )}

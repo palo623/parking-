@@ -5,7 +5,8 @@ import Icono from '../components/Icono.jsx';
 import CamposHorario from '../components/CamposHorario.jsx';
 import Revelar from '../components/Revelar.jsx';
 import { Estrellas } from '../components/Estrellas.jsx';
-import { NEGOCIO, urlMapa, urlComoLlegar } from '../config.js';
+import MapaOSM from '../components/MapaOSM.jsx';
+import { NEGOCIO, urlComoLlegar } from '../config.js';
 import { TIPOS, euros, aInputLocal, proximaHora } from '../utils.js';
 
 const PASOS = [
@@ -235,9 +236,7 @@ export default function Inicio() {
             <h2>Cómo llegar</h2>
           </Revelar>
           <div className="como-llegar">
-            <Revelar className="mapa-embebido">
-              <iframe title={`Mapa de ${NEGOCIO.direccion}`} src={urlMapa()} loading="lazy" />
-            </Revelar>
+            <Revelar><MapaOSM /></Revelar>
             <Revelar retraso={100} className="tarjeta info-llegar">
               <div className="dato-llegar"><Icono nombre="ubicacion" /><div><strong>{NEGOCIO.direccion}</strong><small>{NEGOCIO.ciudad}</small></div></div>
               <div className="dato-llegar"><Icono nombre="reloj" /><div><strong>{NEGOCIO.horario}</strong><small>Acceso con tu código QR</small></div></div>

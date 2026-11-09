@@ -28,3 +28,16 @@ export const urlMapa = (zoom = 0.006) => {
 
 export const urlComoLlegar = () =>
   `https://www.openstreetmap.org/directions?route=%3B${NEGOCIO.lat}%2C${NEGOCIO.lon}#map=16/${NEGOCIO.lat}/${NEGOCIO.lon}`;
+
+// =====================================================================
+//  Datos legales (aparecen en el aviso legal y la política de privacidad)
+//  ⚠ Sustituye los valores entre corchetes por los reales de tu empresa
+// =====================================================================
+export const LEGAL = {
+  titular: '[Nombre de la empresa, S.L.]',
+  nif: '[B00000000]',
+  domicilio: 'Rambla Nova, 43001 Tarragona',
+  registro: '[Registro Mercantil de Tarragona, tomo X, folio X, hoja T-XXXXX]',
+  emailPrivacidad: 'privacidad@parking.es',
+  ultimaActualizacion: '8 de noviembre de 2026',
+};

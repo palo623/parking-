@@ -16,6 +16,8 @@ import Perfil from './pages/Perfil.jsx';
 import Admin from './pages/Admin.jsx';
 import NoEncontrada from './pages/NoEncontrada.jsx';
 import Contacto from './pages/Contacto.jsx';
+import Legal from './pages/Legal.jsx';
+import BotonArriba from './components/BotonArriba.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 
 const SIN_PIE = ['/login', '/registro', '/recuperar', '/nueva-contrasena'];
@@ -26,9 +28,7 @@ export default function App() {
   const navigate = useNavigate();
 
   // Volver arriba al cambiar de página
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+  useEffect(() => window.scrollTo(0, 0), [pathname]);
 
   // Si el usuario llega desde el email de recuperar contraseña
   useEffect(() => {
@@ -37,12 +37,14 @@ export default function App() {
 
   return (
     <>
+      <a href="#contenido" className="saltar">Saltar al contenido</a>
       <Navbar />
-      <main key={pathname} className="aparecer">
+      <main key={pathname} id="contenido" className="aparecer">
         <Routes>
           <Route path="/" element={<Inicio />} />
           <Route path="/reservar" element={<Reservar />} />
           <Route path="/contacto" element={<Contacto />} />
+          {['/aviso-legal', '/privacidad', '/cookies', '/terminos'].map((r) => <Route key={r} path={r} element={<Legal />} />)}
           <Route path="/login" element={<Login />} />
           <Route path="/registro" element={<Registro />} />
           <Route path="/recuperar" element={<Recuperar />} />
@@ -56,6 +58,7 @@ export default function App() {
       </main>
       {!SIN_PIE.includes(pathname) && <Pie />}
       <Chat />
+      <BotonArriba />
     </>
   );
 }

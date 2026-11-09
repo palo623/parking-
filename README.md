@@ -32,6 +32,12 @@ Web para reservar plazas de parking.
 - **Mensajes** del formulario de contacto (sin leer / leídos, responder por email).
 - **Valoraciones**: reparto de estrellas y ocultar/mostrar opiniones en la web.
 
+**Legal y extras de web**
+- Aviso de **cookies** con consentimiento real (necesarias / preferencias / terceros). El mapa de OpenStreetMap no se carga sin permiso y el tema solo se recuerda si se aceptan las preferencias. Se puede cambiar desde "Configurar cookies" en el pie.
+- Páginas de **aviso legal**, **política de privacidad**, **política de cookies** y **condiciones de reserva** (`/aviso-legal`, `/privacidad`, `/cookies`, `/terminos`). Son plantillas: revisa los datos entre corchetes de `LEGAL` en `frontend/src/config.js` y, si puedes, que las valide un profesional.
+- Casillas de aceptación de condiciones y privacidad en el registro y en el formulario de contacto.
+- Fuente Inter servida desde la propia web (sin Google Fonts), favicon, manifest (instalable en el móvil), `robots.txt`, imagen para compartir en redes (Open Graph), botón "volver arriba" y enlace "saltar al contenido" para accesibilidad.
+
 **Datos del negocio**: dirección, teléfono, email, horario y coordenadas del mapa se cambian en un solo sitio: `frontend/src/config.js`.
 
 **Asistente virtual (Google Gemini)**

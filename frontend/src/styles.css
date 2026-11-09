@@ -363,6 +363,62 @@ textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
 .valoracion-admin p { margin: 0; }
 .valoracion-admin.oculta { opacity: .5; }
 
+/* ---------- Cookies ---------- */
+.cookies-banner {
+  position: fixed; left: 20px; right: 20px; bottom: 20px; z-index: 150; max-width: 980px; margin: 0 auto;
+  display: flex; align-items: center; gap: 20px; padding: 18px 20px; flex-wrap: wrap;
+  background: var(--superficie); border: 1px solid var(--borde); border-radius: 18px; box-shadow: var(--sombra-grande); animation: subir .3s ease;
+}
+.cookies-texto { display: flex; gap: 14px; align-items: flex-start; flex: 1 1 420px; }
+.cookies-texto p { margin: 0; font-size: .9rem; color: var(--texto-2); }
+.cookies-texto strong { color: var(--texto); }
+.cookies-icono { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--aviso-suave); color: var(--aviso); flex-shrink: 0; }
+.cookies-botones { display: flex; gap: 8px; flex-wrap: wrap; }
+.cookies-opciones { display: flex; flex-direction: column; gap: 4px; }
+.cookies-opcion { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--borde); cursor: pointer; }
+.cookies-opcion:last-child { border-bottom: 0; }
+.cookies-opcion strong { display: block; font-size: .95rem; }
+.cookies-opcion small { font-size: .83rem; }
+.interruptor { appearance: none; -webkit-appearance: none; width: 44px !important; height: 24px !important; border-radius: 999px; background: var(--borde-fuerte); position: relative; cursor: pointer; flex-shrink: 0; padding: 0; border: 0; transition: background var(--transicion); }
+.interruptor::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform var(--transicion); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.interruptor:checked { background: var(--primario); }
+.interruptor:checked::after { transform: translateX(20px); }
+.mapa-bloqueado { height: 100%; min-height: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 28px; text-align: center; color: var(--texto-2); }
+.mapa-bloqueado > .icono { color: var(--primario); }
+.mapa-bloqueado strong { color: var(--texto); }
+.mapa-bloqueado p { margin: 0; max-width: 360px; font-size: .9rem; }
+
+/* ---------- Páginas legales ---------- */
+.legal-layout { display: grid; grid-template-columns: 240px 1fr; gap: 28px; align-items: start; }
+.legal-menu { position: sticky; top: 92px; display: flex; flex-direction: column; gap: 2px; }
+.legal-menu a { padding: 9px 12px; border-radius: 10px; color: var(--texto-2); font-weight: 600; text-decoration: none; font-size: .93rem; }
+.legal-menu a:hover { background: var(--superficie-2); color: var(--texto); }
+.legal-menu a.active { background: var(--primario-suave); color: var(--primario); }
+.legal { padding: 36px 40px; max-width: 860px; }
+.legal h1 { margin-bottom: 4px; }
+.legal h2 { font-size: 1.15rem; margin: 28px 0 10px; }
+.legal p, .legal li { color: var(--texto-2); line-height: 1.7; }
+.legal ul { padding-left: 20px; }
+.legal strong { color: var(--texto); }
+.tabla-legal td { white-space: normal; vertical-align: top; color: var(--texto-2); }
+.tabla-legal td:first-child { color: var(--texto); font-weight: 500; }
+
+/* ---------- Accesibilidad y extras ---------- */
+.saltar { position: absolute; left: 12px; top: -60px; z-index: 300; background: var(--primario); color: #fff; padding: 10px 16px; border-radius: 10px; font-weight: 700; }
+.saltar:focus { top: 12px; text-decoration: none; }
+.boton-arriba {
+  position: fixed; right: 30px; bottom: 96px; z-index: 80; width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--borde); background: var(--superficie); color: var(--texto); box-shadow: var(--sombra);
+  display: grid; place-items: center; cursor: pointer; opacity: 0; transform: translateY(10px); pointer-events: none;
+  transition: opacity var(--transicion), transform var(--transicion);
+}
+.boton-arriba.visible { opacity: 1; transform: none; pointer-events: auto; }
+.boton-arriba:hover { border-color: var(--primario); color: var(--primario); }
+.pie-legales { display: flex; gap: 16px; flex-wrap: wrap; }
+.pie-legales a, .pie-legales .enlace { color: var(--texto-3); font-size: .85rem; }
+.pie-legales a:hover, .pie-legales .enlace:hover { color: var(--texto); }
+.check a { font-weight: 600; }
+
 /* ---------- Pie ---------- */
 .pie { border-top: 1px solid var(--borde); background: var(--superficie); padding: 48px 0 28px; margin-top: auto; }
 .pie-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1.4fr; gap: 32px; }
@@ -563,6 +619,9 @@ td select { padding: 6px 8px; width: auto; }
 .chat-aviso { margin: 0; padding: 0 14px 10px; font-size: .72rem; color: var(--texto-3); text-align: center; line-height: 1.4; }
 @keyframes rebote { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-5px); opacity: 1; } }
 @media (max-width: 480px) {
+  .cookies-banner { left: 10px; right: 10px; bottom: 10px; }
+  .cookies-botones { width: 100%; }
+  .cookies-botones .btn { flex: 1; }
   .chat { right: 0; bottom: 0; width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
   .chat-boton.abierto { display: none; }
 }
@@ -573,13 +632,16 @@ td select { padding: 6px 8px; width: auto; }
 
 /* ---------- Impresión del ticket ---------- */
 @media print {
-  .navbar, .pie, .ticket-acciones, .no-imprimir, .toasts, .chat, .chat-boton { display: none !important; }
+  .navbar, .pie, .ticket-acciones, .no-imprimir, .toasts, .chat, .chat-boton, .cookies-banner, .boton-arriba { display: none !important; }
   body, :root { background: #fff !important; }
   .ticket { box-shadow: none; border: 1px solid #ccc; }
 }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 980px) {
+  .legal-layout { grid-template-columns: 1fr; }
+  .legal-menu { position: static; flex-direction: row; flex-wrap: wrap; }
+  .legal { padding: 24px; }
   .opiniones { grid-template-columns: 1fr 1fr; }
   .como-llegar, .contacto-grid { grid-template-columns: 1fr; }
   .banda-cifras { grid-template-columns: 1fr 1fr; }

@@ -75,6 +75,10 @@ export default function Registro() {
               </span>
             )}
           </label>
+          <label className="check">
+            <input type="checkbox" required />
+            <span>Acepto las <Link to="/terminos" target="_blank">condiciones de reserva</Link> y la <Link to="/privacidad" target="_blank">política de privacidad</Link>.</span>
+          </label>
           <button className="btn btn-grande btn-bloque" disabled={enviando}>
             {enviando ? <><span className="spinner" /> Creando cuenta…</> : 'Crear cuenta'}
           </button>

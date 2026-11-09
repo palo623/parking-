@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import Icono from './Icono.jsx';
 import { NEGOCIO } from '../config.js';
+import { useCookies } from '../context/CookiesContext.jsx';
 
 export default function Pie() {
+  const { abrirPanel } = useCookies();
   return (
     <footer className="pie">
       <div className="contenedor">
@@ -42,7 +44,13 @@ export default function Pie() {
         </div>
         <div className="pie-legal">
           <span>© {new Date().getFullYear()} Parking. Todos los derechos reservados.</span>
-          <span>Pago seguro · Datos protegidos</span>
+          <nav className="pie-legales" aria-label="Información legal">
+            <Link to="/aviso-legal">Aviso legal</Link>
+            <Link to="/privacidad">Privacidad</Link>
+            <Link to="/cookies">Cookies</Link>
+            <Link to="/terminos">Condiciones</Link>
+            <button className="enlace" onClick={abrirPanel}>Configurar cookies</button>
+          </nav>
         </div>
       </div>
     </footer>

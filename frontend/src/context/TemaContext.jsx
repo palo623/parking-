@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { almacen } from '../utils.js';
+import { consentimientoActual } from './CookiesContext.jsx';
 
 const TemaContext = createContext(null);
 
@@ -14,7 +15,8 @@ export function TemaProvider({ children }) {
 
   useEffect(() => {
     document.documentElement.dataset.theme = tema === 'oscuro' ? 'dark' : 'light';
-    almacen.guardar('tema', tema);
+    // Solo se recuerda si el usuario ha aceptado las cookies de preferencias
+    if (consentimientoActual()?.preferencias) almacen.guardar('tema', tema);
   }, [tema]);
 
   const alternar = () => setTema((t) => (t === 'oscuro' ? 'claro' : 'oscuro'));
