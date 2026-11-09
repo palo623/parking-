@@ -18,12 +18,21 @@ Web para reservar plazas de parking.
 - Mis reservas: próximas / historial, cuenta atrás, cancelación con confirmación.
 - Perfil: datos personales, **vehículos guardados** (se ofrecen al reservar) y cambio de contraseña.
 - Registro con medidor de seguridad de contraseña y **recuperación de contraseña** por email.
+- **Ampliar una reserva** (incluso si ya ha empezado) pagando solo la diferencia.
+- **Valorar** la estancia con estrellas; las opiniones reales salen en la portada con la media.
+- Página de **contacto** con formulario (con protección anti-spam), datos del negocio y mapa.
+- Portada con plazas libres en directo, cifras, opiniones, sección **"Cómo llegar"** con mapa (OpenStreetMap) y animaciones al hacer scroll.
 
 **Administrador**
 - Resumen: ocupación actual, reservas pendientes, ingresos, **gráfica de ingresos de 14 días**, ocupación por planta y mapa del parking en tiempo real.
 - Reservas: buscador, filtro por estado, cambio de estado y **exportación a CSV**.
 - Plazas: alta, edición (código, planta, tipo, precio) y activar/desactivar.
 - Usuarios: lista con buscador y dar/quitar rol de administrador.
+- **Agenda**: línea de tiempo de 24 h por plaza para ver la ocupación de cualquier día.
+- **Mensajes** del formulario de contacto (sin leer / leídos, responder por email).
+- **Valoraciones**: reparto de estrellas y ocultar/mostrar opiniones en la web.
+
+**Datos del negocio**: dirección, teléfono, email, horario y coordenadas del mapa se cambian en un solo sitio: `frontend/src/config.js`.
 
 **Asistente virtual (Google Gemini)**
 - Burbuja de chat en todas las páginas. Responde dudas sobre reservas, precios, cancelaciones y problemas.
@@ -68,7 +77,7 @@ Abre http://localhost:5173 y crea tu cuenta. El asistente se activa al añadir l
 El modelo por defecto es `gemini-flash-lite-latest` (siempre el Flash-Lite más reciente). Para fijar otro, cambia `GEMINI_MODEL` en el mismo archivo, por ejemplo `GEMINI_MODEL=gemini-3.5-flash-lite`.
 
 ### Base de datos desde cero (solo si usas otro proyecto)
-En Supabase → SQL Editor ejecuta, en este orden: `supabase/schema.sql`, `supabase/02_funciones_y_permisos.sql` y `supabase/03_mejoras.sql`.
+En Supabase → SQL Editor ejecuta, en este orden: `supabase/schema.sql`, `supabase/02_funciones_y_permisos.sql`, `supabase/03_mejoras.sql` y `supabase/04_valoraciones_contacto.sql`.
 Después, en Authentication → URL Configuration, pon como *Site URL* la dirección de la web (en local `http://localhost:5173`) y añádela a *Redirect URLs* con `/**` al final.
 
 ### 4. Hacerte administrador
@@ -90,6 +99,13 @@ where id = (select id from auth.users where email = 'TU_EMAIL');
 | GET | `/api/admin/estadisticas?dias=14` | admin |
 | GET / PATCH | `/api/admin/usuarios` | admin |
 | GET | `/api/chat/estado` | público |
+| GET | `/api/valoraciones` | público |
+| POST | `/api/contacto` | público |
+| POST | `/api/reservas/:id/ampliar` | usuario |
+| POST | `/api/reservas/:id/valoracion` | usuario |
+| GET | `/api/admin/agenda?dia=` | admin |
+| GET / PATCH | `/api/admin/mensajes` | admin |
+| GET / PATCH | `/api/admin/valoraciones` | admin |
 | POST | `/api/chat` | público (usa la sesión si la hay) |
 | GET / POST | `/api/reservas` | usuario |
 | PATCH | `/api/reservas/:id/cancelar` | usuario |

@@ -5,6 +5,7 @@ import { api } from '../api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import Icono from '../components/Icono.jsx';
 import { Confirmar } from '../components/Modal.jsx';
+import { ModalAmpliar } from '../components/ModalesReserva.jsx';
 import Vacio, { Cargando } from '../components/Vacio.jsx';
 import { TIPOS, ESTADOS, euros, planta, soloFecha, soloHora, duracion, estadoReal, descargarCalendario, tiempoRelativo } from '../utils.js';
 
@@ -19,6 +20,7 @@ export default function Ticket() {
   const [error, setError] = useState('');
   const [confirmar, setConfirmar] = useState(false);
   const [cancelando, setCancelando] = useState(false);
+  const [ampliando, setAmpliando] = useState(false);
 
   useEffect(() => {
     api.reserva(id).then(setReserva).catch((e) => setError(e.message));
@@ -121,9 +123,12 @@ export default function Ticket() {
           {typeof navigator !== 'undefined' && navigator.share && (
             <button className="btn btn-sec" onClick={compartir}><Icono nombre="compartir" /> Compartir</button>
           )}
+          {['confirmada', 'en_curso'].includes(estado) && <button className="btn btn-sec" onClick={() => setAmpliando(true)}><Icono nombre="mas30" /> Ampliar</button>}
           {sePuedeCancelar && <button className="btn btn-peligro-sec" onClick={() => setConfirmar(true)}><Icono nombre="cerrar" /> Cancelar reserva</button>}
         </div>
       )}
+
+      {ampliando && <ModalAmpliar reserva={reserva} onCerrar={() => setAmpliando(false)} onHecho={(r) => { setReserva(r); setAmpliando(false); }} />}
 
       <Confirmar
         abierto={confirmar}

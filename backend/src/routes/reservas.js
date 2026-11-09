@@ -5,7 +5,7 @@ import { parseRango, asyncHandler } from '../utils.js';
 const router = Router();
 router.use(requireAuth);
 
-const CAMPOS = 'id, plaza_id, matricula, inicio, fin, precio_total, estado, creado_en, plaza:plazas(codigo, planta, tipo)';
+const CAMPOS = 'id, plaza_id, matricula, inicio, fin, precio_total, estado, creado_en, plaza:plazas(codigo, planta, tipo, precio_hora), valoracion:valoraciones(puntuacion, comentario)';
 
 // GET /api/reservas → reservas del usuario
 router.get('/', asyncHandler(async (req, res) => {
@@ -50,6 +50,30 @@ router.get('/:id', asyncHandler(async (req, res) => {
   if (error) throw error;
   if (!data) return res.status(404).json({ error: 'Reserva no encontrada' });
   res.json(data);
+}));
+
+// POST /api/reservas/:id/ampliar { fin }
+router.post('/:id/ampliar', asyncHandler(async (req, res) => {
+  const fin = new Date(req.body?.fin);
+  if (isNaN(fin)) return res.status(400).json({ error: 'Fecha de salida no válida' });
+  const { error } = await req.db.rpc('ampliar_reserva', { p_id: Number(req.params.id), p_nuevo_fin: fin.toISOString() });
+  if (error) {
+    if (error.code === '23P01') return res.status(409).json({ error: 'La plaza ya está reservada por otra persona en ese horario' });
+    throw error;
+  }
+  const { data, error: err2 } = await req.db.from('reservas').select(CAMPOS).eq('id', req.params.id).single();
+  if (err2) throw err2;
+  res.json(data);
+}));
+
+// POST /api/reservas/:id/valoracion { puntuacion, comentario }
+router.post('/:id/valoracion', asyncHandler(async (req, res) => {
+  const puntuacion = parseInt(req.body?.puntuacion, 10);
+  if (!(puntuacion >= 1 && puntuacion <= 5)) return res.status(400).json({ error: 'Elige de 1 a 5 estrellas' });
+  const comentario = typeof req.body?.comentario === 'string' ? req.body.comentario.slice(0, 500) : null;
+  const { error } = await req.db.rpc('valorar_reserva', { p_reserva_id: Number(req.params.id), p_puntuacion: puntuacion, p_comentario: comentario });
+  if (error) throw error;
+  res.status(201).json({ ok: true });
 }));
 
 // PATCH /api/reservas/:id/cancelar

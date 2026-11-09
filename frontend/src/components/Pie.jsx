@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import Icono from './Icono.jsx';
+import { NEGOCIO } from '../config.js';
 
 export default function Pie() {
   return (
@@ -17,6 +18,8 @@ export default function Pie() {
               <li><Link to="/mis-reservas">Mis reservas</Link></li>
               <li><a href="/#tarifas">Tarifas</a></li>
               <li><a href="/#preguntas">Preguntas frecuentes</a></li>
+              <li><a href="/#como-llegar">Cómo llegar</a></li>
+              <li><a href="/#opiniones">Opiniones</a></li>
             </ul>
           </div>
           <div>
@@ -30,9 +33,10 @@ export default function Pie() {
           <div>
             <h4>Contacto</h4>
             <ul>
-              <li><Icono nombre="ubicacion" tam={16} /> Calle Mayor 1, Madrid</li>
-              <li><Icono nombre="reloj" tam={16} /> Abierto 24 h, 365 días</li>
-              <li><Icono nombre="email" tam={16} /> hola@parking.es</li>
+              <li><Icono nombre="ubicacion" tam={16} /> {NEGOCIO.direccion}, {NEGOCIO.ciudad}</li>
+              <li><Icono nombre="reloj" tam={16} /> {NEGOCIO.horario}</li>
+              <li><Icono nombre="telefono" tam={16} /> <a href={`tel:${NEGOCIO.telefono.replace(/\s/g, '')}`}>{NEGOCIO.telefono}</a></li>
+              <li><Icono nombre="email" tam={16} /> <Link to="/contacto">{NEGOCIO.email}</Link></li>
             </ul>
           </div>
         </div>

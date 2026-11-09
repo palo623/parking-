@@ -112,6 +112,56 @@ router.get('/estadisticas', asyncHandler(async (req, res) => {
   res.json({ ingresos_diarios: ingresos.data, ocupacion_plantas: plantas.data });
 }));
 
+// GET /api/admin/agenda?dia=YYYY-MM-DD → plazas y reservas que tocan ese día
+router.get('/agenda', asyncHandler(async (req, res) => {
+  const dia = /^\d{4}-\d{2}-\d{2}$/.test(req.query.dia || '') ? req.query.dia : new Date().toISOString().slice(0, 10);
+  const desde = new Date(`${dia}T00:00:00`);
+  const hasta = new Date(desde.getTime() + 86400e3);
+  const [plazas, reservas] = await Promise.all([
+    req.db.from('plazas').select('id, codigo, planta, tipo').eq('activa', true).order('planta', { ascending: false }).order('codigo'),
+    req.db.from('reservas')
+      .select('id, plaza_id, matricula, inicio, fin, estado, precio_total, usuario:perfiles(nombre)')
+      .neq('estado', 'cancelada')
+      .lt('inicio', hasta.toISOString())
+      .gt('fin', desde.toISOString()),
+  ]);
+  if (plazas.error) throw plazas.error;
+  if (reservas.error) throw reservas.error;
+  res.json({ dia, desde: desde.toISOString(), hasta: hasta.toISOString(), plazas: plazas.data, reservas: reservas.data });
+}));
+
+// GET /api/admin/mensajes
+router.get('/mensajes', asyncHandler(async (req, res) => {
+  const { data, error } = await req.db.from('mensajes_contacto').select('*').order('creado_en', { ascending: false }).limit(200);
+  if (error) throw error;
+  res.json(data);
+}));
+
+// PATCH /api/admin/mensajes/:id { leido }
+router.patch('/mensajes/:id', asyncHandler(async (req, res) => {
+  const { data, error } = await req.db.from('mensajes_contacto').update({ leido: Boolean(req.body?.leido) }).eq('id', req.params.id).select().single();
+  if (error) throw error;
+  res.json(data);
+}));
+
+// GET /api/admin/valoraciones
+router.get('/valoraciones', asyncHandler(async (req, res) => {
+  const { data, error } = await req.db
+    .from('valoraciones')
+    .select('id, puntuacion, comentario, visible, creado_en, usuario:perfiles(nombre, email), reserva:reservas(id, plaza:plazas(codigo))')
+    .order('creado_en', { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  res.json(data);
+}));
+
+// PATCH /api/admin/valoraciones/:id { visible }
+router.patch('/valoraciones/:id', asyncHandler(async (req, res) => {
+  const { data, error } = await req.db.from('valoraciones').update({ visible: Boolean(req.body?.visible) }).eq('id', req.params.id).select('id, visible').single();
+  if (error) throw error;
+  res.json(data);
+}));
+
 // GET /api/admin/usuarios
 router.get('/usuarios', asyncHandler(async (req, res) => {
   const { data, error } = await req.db

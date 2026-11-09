@@ -6,17 +6,25 @@ import Icono from '../components/Icono.jsx';
 import Mapa from '../components/Mapa.jsx';
 import Modal from '../components/Modal.jsx';
 import Vacio from '../components/Vacio.jsx';
+import { Agenda, Mensajes, Valoraciones } from './AdminExtra.jsx';
 import { TIPOS, ESTADOS, euros, fecha, planta, estadoReal, descargarCSV } from '../utils.js';
 
 const PLAZA_VACIA = { codigo: '', planta: 0, tipo: 'normal', precio_hora: '2.00' };
 
 export default function Admin() {
   const [pestana, setPestana] = useState('resumen');
+  const [sinLeer, setSinLeer] = useState(0);
+  const contarSinLeer = () => api.admin.mensajes().then((m) => setSinLeer(m.filter((x) => !x.leido).length)).catch(() => {});
+  useEffect(() => { contarSinLeer(); }, []);
+
   const pestanas = [
     { id: 'resumen', texto: 'Resumen', icono: 'grafica' },
+    { id: 'agenda', texto: 'Agenda', icono: 'agenda' },
     { id: 'reservas', texto: 'Reservas', icono: 'ticket' },
     { id: 'plazas', texto: 'Plazas', icono: 'mapa' },
     { id: 'usuarios', texto: 'Usuarios', icono: 'usuarios' },
+    { id: 'mensajes', texto: 'Mensajes', icono: 'bandeja', contador: sinLeer },
+    { id: 'valoraciones', texto: 'Valoraciones', icono: 'estrella' },
   ];
 
   return (
@@ -31,6 +39,7 @@ export default function Admin() {
         {pestanas.map((p) => (
           <button key={p.id} className={pestana === p.id ? 'activa' : ''} onClick={() => setPestana(p.id)}>
             <Icono nombre={p.icono} tam={16} /> {p.texto}
+            {p.contador > 0 && <span className="contador contador-alerta">{p.contador}</span>}
           </button>
         ))}
       </div>
@@ -38,6 +47,9 @@ export default function Admin() {
       {pestana === 'reservas' && <Reservas />}
       {pestana === 'plazas' && <Plazas />}
       {pestana === 'usuarios' && <Usuarios />}
+      {pestana === 'agenda' && <Agenda />}
+      {pestana === 'mensajes' && <Mensajes onCambio={contarSinLeer} />}
+      {pestana === 'valoraciones' && <Valoraciones />}
     </div>
   );
 }

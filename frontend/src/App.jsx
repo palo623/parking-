@@ -15,6 +15,7 @@ import MisReservas from './pages/MisReservas.jsx';
 import Perfil from './pages/Perfil.jsx';
 import Admin from './pages/Admin.jsx';
 import NoEncontrada from './pages/NoEncontrada.jsx';
+import Contacto from './pages/Contacto.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 
 const SIN_PIE = ['/login', '/registro', '/recuperar', '/nueva-contrasena'];
@@ -41,6 +42,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Inicio />} />
           <Route path="/reservar" element={<Reservar />} />
+          <Route path="/contacto" element={<Contacto />} />
           <Route path="/login" element={<Login />} />
           <Route path="/registro" element={<Registro />} />
           <Route path="/recuperar" element={<Recuperar />} />

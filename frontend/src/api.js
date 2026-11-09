@@ -37,6 +37,11 @@ export const api = {
   crearReserva: (datos) => request('/reservas', { method: 'POST', body: datos }),
   cancelarReserva: (id) => request(`/reservas/${id}/cancelar`, { method: 'PATCH' }),
 
+  ampliarReserva: (id, fin) => request(`/reservas/${id}/ampliar`, { method: 'POST', body: { fin } }),
+  valorarReserva: (id, puntuacion, comentario) => request(`/reservas/${id}/valoracion`, { method: 'POST', body: { puntuacion, comentario } }),
+  valoraciones: () => request('/valoraciones'),
+  contacto: (datos) => request('/contacto', { method: 'POST', body: datos }),
+
   perfil: () => request('/perfil'),
   actualizarPerfil: (datos) => request('/perfil', { method: 'PATCH', body: datos }),
 
@@ -55,6 +60,11 @@ export const api = {
     plazas: () => request('/admin/plazas'),
     crearPlaza: (datos) => request('/admin/plazas', { method: 'POST', body: datos }),
     editarPlaza: (id, datos) => request(`/admin/plazas/${id}`, { method: 'PATCH', body: datos }),
+    agenda: (dia) => request(`/admin/agenda?dia=${dia}`),
+    mensajes: () => request('/admin/mensajes'),
+    marcarMensaje: (id, leido) => request(`/admin/mensajes/${id}`, { method: 'PATCH', body: { leido } }),
+    valoraciones: () => request('/admin/valoraciones'),
+    moderarValoracion: (id, visible) => request(`/admin/valoraciones/${id}`, { method: 'PATCH', body: { visible } }),
     usuarios: () => request('/admin/usuarios'),
     cambiarRol: (id, rol) => request(`/admin/usuarios/${id}`, { method: 'PATCH', body: { rol } }),
   },

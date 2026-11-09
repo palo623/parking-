@@ -9,6 +9,7 @@ import perfilRouter from './routes/perfil.js';
 import vehiculosRouter from './routes/vehiculos.js';
 import adminRouter from './routes/admin.js';
 import chatRouter from './routes/chat.js';
+import publicoRouter from './routes/publico.js';
 import { respuestaDeError } from './utils.js';
 
 const app = express();
@@ -33,6 +34,7 @@ app.use('/api/perfil', perfilRouter);
 app.use('/api/vehiculos', vehiculosRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api', publicoRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 

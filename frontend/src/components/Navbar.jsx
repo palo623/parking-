@@ -26,6 +26,7 @@ export default function Navbar() {
     { to: '/reservar', texto: 'Reservar', icono: 'mapa' },
     ...(session ? [{ to: '/mis-reservas', texto: 'Mis reservas', icono: 'ticket' }] : []),
     ...(esAdmin ? [{ to: '/admin', texto: 'Administración', icono: 'grafica' }] : []),
+    { to: '/contacto', texto: 'Contacto', icono: 'email' },
   ];
 
   return (

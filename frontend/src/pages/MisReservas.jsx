@@ -4,6 +4,8 @@ import { api } from '../api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import Icono from '../components/Icono.jsx';
 import { Confirmar } from '../components/Modal.jsx';
+import { ModalAmpliar, ModalValorar } from '../components/ModalesReserva.jsx';
+import { Estrellas } from '../components/Estrellas.jsx';
 import Vacio from '../components/Vacio.jsx';
 import { TIPOS, ESTADOS, euros, fecha, planta, duracion, estadoReal, tiempoRelativo } from '../utils.js';
 
@@ -14,6 +16,10 @@ export default function MisReservas() {
   const [pestana, setPestana] = useState('proximas');
   const [aCancelar, setACancelar] = useState(null);
   const [cancelando, setCancelando] = useState(false);
+  const [aAmpliar, setAAmpliar] = useState(null);
+  const [aValorar, setAValorar] = useState(null);
+
+  const valoracionDe = (r) => (Array.isArray(r.valoracion) ? r.valoracion[0] : r.valoracion);
 
   const cargar = () => api.misReservas().then(setReservas).catch((e) => setError(e.message));
   useEffect(() => { cargar(); }, []);
@@ -99,7 +105,15 @@ export default function MisReservas() {
             </div>
             <div className="reserva-acciones">
               <strong>{euros(r.precio_total)}</strong>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {['confirmada', 'en_curso'].includes(r.estadoActual) && (
+                  <button className="btn btn-sec btn-peq" onClick={() => setAAmpliar(r)}><Icono nombre="mas30" tam={15} /> Ampliar</button>
+                )}
+                {['en_curso', 'completada'].includes(r.estadoActual) && (
+                  valoracionDe(r)
+                    ? <span title="Tu valoración"><Estrellas valor={valoracionDe(r).puntuacion} tam={15} /></span>
+                    : <button className="btn btn-sec btn-peq" onClick={() => setAValorar(r)}><Icono nombre="estrella" tam={15} /> Valorar</button>
+                )}
                 {r.estadoActual !== 'cancelada' && (
                   <Link to={`/reserva/${r.id}`} className="btn btn-sec btn-peq"><Icono nombre="ticket" tam={15} /> Ticket</Link>
                 )}
@@ -111,6 +125,24 @@ export default function MisReservas() {
           </article>
         ))}
       </div>
+
+      {aAmpliar && (
+        <ModalAmpliar
+          reserva={aAmpliar}
+          onCerrar={() => setAAmpliar(null)}
+          onHecho={() => { setAAmpliar(null); cargar(); }}
+        />
+      )}
+      {aValorar && (
+        <ModalValorar
+          reserva={aValorar}
+          onCerrar={() => setAValorar(null)}
+          onHecho={(v) => {
+            setReservas((rs) => rs.map((x) => (x.id === aValorar.id ? { ...x, valoracion: v } : x)));
+            setAValorar(null);
+          }}
+        />
+      )}
 
       <Confirmar
         abierto={!!aCancelar}
