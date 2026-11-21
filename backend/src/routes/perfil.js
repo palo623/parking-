@@ -18,7 +18,7 @@ router.patch('/', asyncHandler(async (req, res) => {
   const p = req.body?.preferencias;
   if (p && typeof p === 'object') {
     const prefs = {};
-    if (['claro', 'oscuro', 'sistema'].includes(p.tema)) prefs.tema = p.tema;
+    if (['claro', 'oscuro'].includes(p.tema)) prefs.tema = p.tema;
     if (['es', 'ca', 'en'].includes(p.idioma)) prefs.idioma = p.idioma;
     if (p.avisos && typeof p.avisos === 'object') {
       prefs.avisos = Object.fromEntries(['fin', 'email', 'ofertas'].filter((k) => k in p.avisos).map((k) => [k, Boolean(p.avisos[k])]));

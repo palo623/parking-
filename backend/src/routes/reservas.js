@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { supabase } from '../supabase.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -9,7 +10,10 @@ router.use(requireAuth);
 // Se aceptan matrículas extranjeras y antiguas: de 2 a 10 letras o números
 const MATRICULA_RE = /^[A-Z0-9]{2,10}$/;
 const TIPOS = ['normal', 'moto', 'electrico', 'discapacitados'];
-const CAMPOS = `id, codigo, matricula, inicio, fin, precio_base, gastos_gestion, precio_total, estado, creado_en,
+// Pago simulado: no se cobra nada, pero se guarda el método y una referencia como haría una pasarela
+const METODOS = ['tarjeta', 'bizum', 'paypal'];
+const refPago = () => `PAY-${randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase()}`;
+const CAMPOS = `id, codigo, matricula, inicio, fin, precio_base, gastos_gestion, precio_total, estado, creado_en, metodo_pago, pago_ref,
   plaza:plazas(codigo, planta, tipo, parking:parkings(slug, nombre, zona))`;
 
 // GET /api/reservas → reservas del usuario
@@ -44,6 +48,7 @@ router.post('/', asyncHandler(async (req, res) => {
   const body = req.body || {};
   const matricula = normalizarMatricula(body.matricula);
   const tipo = TIPOS.includes(body.tipo) ? body.tipo : 'normal';
+  const metodo = METODOS.includes(body.metodo_pago) ? body.metodo_pago : 'tarjeta';
 
   if (!body.parking_id && !body.plaza_id) return res.status(400).json({ error: 'Falta el parking' });
   if (!MATRICULA_RE.test(matricula)) return res.status(400).json({ error: 'Matrícula no válida' });
@@ -78,6 +83,8 @@ router.post('/', asyncHandler(async (req, res) => {
         inicio: inicio.toISOString(),
         fin: fin.toISOString(),
         ...desglosePrecio(plaza.precio_hora, inicio, fin),
+        metodo_pago: metodo,
+        pago_ref: refPago(),
       })
       .select(CAMPOS)
       .single();

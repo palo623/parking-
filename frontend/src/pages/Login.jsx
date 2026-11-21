@@ -65,6 +65,8 @@ export default function Login() {
     e.preventDefault();
     setEnviando(true);
     setError('');
+    // Si entra sin ir a ningún sitio concreto y es admin, App lo lleva a su panel
+    if (desde === '/') { try { sessionStorage.setItem('tp-entrando', '1'); } catch { /* nada */ } }
     const { error } = await login(email, password);
     setEnviando(false);
     if (error) {

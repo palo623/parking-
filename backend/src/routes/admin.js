@@ -9,23 +9,28 @@ router.use(requireAuth, requireAdmin);
 const TIPOS = ['normal', 'moto', 'electrico', 'discapacitados'];
 
 // GET /api/admin/resumen
+// «Ocupadas» cuenta las plazas con coche dentro ahora o que llegan en la próxima hora
+// (las reservas empiezan en la siguiente media hora, así una reserva nueva se ve al momento).
 router.get('/resumen', asyncHandler(async (_req, res) => {
-  const ahora = new Date().toISOString();
-  const [plazas, activasAhora, confirmadas, ingresos] = await Promise.all([
+  const ahora = new Date();
+  const enUnaHora = new Date(ahora.getTime() + 60 * 60 * 1000).toISOString();
+  const [plazas, ocupadas, confirmadas, ingresos] = await Promise.all([
     supabase.from('plazas').select('id', { count: 'exact', head: true }).eq('activa', true),
+    supabase.from('reservas').select('plaza_id')
+      .eq('estado', 'confirmada').lt('inicio', enUnaHora).gt('fin', ahora.toISOString()),
     supabase.from('reservas').select('id', { count: 'exact', head: true })
-      .eq('estado', 'confirmada').lte('inicio', ahora).gt('fin', ahora),
-    supabase.from('reservas').select('id', { count: 'exact', head: true })
-      .eq('estado', 'confirmada').gt('fin', ahora),
+      .eq('estado', 'confirmada').gt('fin', ahora.toISOString()),
     supabase.from('reservas').select('precio_total').neq('estado', 'cancelada'),
   ]);
-  for (const r of [plazas, activasAhora, confirmadas, ingresos]) if (r.error) throw r.error;
+  for (const r of [plazas, ocupadas, confirmadas, ingresos]) if (r.error) throw r.error;
 
+  const ocupadasAhora = new Set(ocupadas.data.map((r) => r.plaza_id)).size;
   res.json({
     plazas_activas: plazas.count,
-    ocupadas_ahora: activasAhora.count,
+    ocupadas_ahora: ocupadasAhora,
+    libres_ahora: Math.max(0, plazas.count - ocupadasAhora),
     reservas_pendientes: confirmadas.count,
-    ingresos_totales: ingresos.data.reduce((s, r) => s + Number(r.precio_total), 0),
+    ingresos_totales: Math.round(ingresos.data.reduce((s, r) => s + Number(r.precio_total), 0) * 100) / 100,
   });
 }));
 
@@ -33,9 +38,9 @@ router.get('/resumen', asyncHandler(async (_req, res) => {
 router.get('/reservas', asyncHandler(async (_req, res) => {
   const { data, error } = await supabase
     .from('reservas')
-    .select('id, codigo, matricula, inicio, fin, precio_base, gastos_gestion, precio_total, estado, plaza:plazas(codigo, parking:parkings(nombre)), usuario:perfiles(nombre, telefono)')
+    .select('id, codigo, matricula, inicio, fin, precio_base, gastos_gestion, precio_total, estado, metodo_pago, pago_ref, plaza:plazas(codigo, parking:parkings(nombre)), usuario:perfiles(nombre, telefono)')
     .order('inicio', { ascending: false })
-    .limit(200);
+    .limit(500);
   if (error) throw error;
   res.json(data);
 }));

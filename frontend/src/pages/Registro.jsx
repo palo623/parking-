@@ -10,7 +10,7 @@ export default function Registro() {
   const { T } = useLang();
   const navigate = useNavigate();
   const location = useLocation();
-  const [form, setForm] = useState({ nombre: '', telefono: '', email: '', password: '' });
+  const [form, setForm] = useState({ nombre: '', apellidos: '', telefono: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [confirmar, setConfirmar] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -19,10 +19,13 @@ export default function Registro() {
 
   const enviar = async (e) => {
     e.preventDefault();
+    const nombre = form.nombre.trim();
+    const apellidos = form.apellidos.trim();
+    if (!nombre || !apellidos) return setError(T('Escribe tu nombre y tus apellidos.', 'Escriu el teu nom i els cognoms.', 'Enter your first and last name.'));
     if (form.password.length < 6) return setError(T('La contraseña debe tener al menos 6 caracteres.', 'La contrasenya ha de tenir almenys 6 caràcters.', 'The password must be at least 6 characters.'));
     setEnviando(true);
     setError('');
-    const { data, error } = await registro(form.email, form.password, form.nombre, form.telefono);
+    const { data, error } = await registro(form.email, form.password, `${nombre} ${apellidos}`, form.telefono);
     setEnviando(false);
     if (error) return setError(error.message);
     // Si Supabase pide confirmar el email, todavía no hay sesión
@@ -43,9 +46,14 @@ export default function Registro() {
     <CajaCuenta eyebrow={T('Nueva cuenta', 'Compte nou', 'New account')} titulo={T('Crear cuenta', 'Crear compte', 'Create account')}>
       <BotonGoogle desde={location.state?.desde || '/'} />
       <form className="mt-5 grid gap-4" onSubmit={enviar}>
-        <label className="label">{T('Nombre', 'Nom', 'Name')}
-          <input className="field" name="nombre" autoComplete="name" value={form.nombre} onChange={cambiar} required autoFocus />
-        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="label">{T('Nombre', 'Nom', 'First name')}
+            <input className="field" name="nombre" autoComplete="given-name" value={form.nombre} onChange={cambiar} required autoFocus />
+          </label>
+          <label className="label">{T('Apellidos', 'Cognoms', 'Last name')}
+            <input className="field" name="apellidos" autoComplete="family-name" value={form.apellidos} onChange={cambiar} required />
+          </label>
+        </div>
         <label className="label">{T('Teléfono (opcional)', 'Telèfon (opcional)', 'Phone (optional)')}
           <input className="field" name="telefono" type="tel" autoComplete="tel" value={form.telefono} onChange={cambiar} />
         </label>

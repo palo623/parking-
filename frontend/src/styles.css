@@ -405,6 +405,7 @@ table.data tbody tr:hover { background: rgb(var(--ink) / .03); }
 .asistente-avatar { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: rgb(var(--accent)); color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; }
 .burbuja { max-width: 90%; padding: 10px 14px; border-radius: 14px 14px 14px 4px; background: rgb(var(--sunken)); color: rgb(var(--ink)); font-size: .92rem; }
 .chip:disabled { opacity: .55; cursor: not-allowed; }
+.burbuja-yo { justify-self: end; border-radius: 14px 14px 4px 14px; background: rgb(var(--accent)); color: #fff; }
 
 /* ===== v8: ventana del justificante e impresión ===== */
 .modal-fondo { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgb(15 23 42 / .55); overflow: auto; }
@@ -443,3 +444,16 @@ table.data tbody tr:hover { background: rgb(var(--ink) / .03); }
 .interruptor:checked { background: rgb(var(--accent)); }
 .interruptor:checked::after { transform: translateX(18px); }
 .interruptor:focus-visible { outline: 3px solid rgb(var(--link) / .5); outline-offset: 2px; }
+
+/* Acceso al panel, solo visible para administradores */
+.top-admin { color: rgb(var(--accent)); font-weight: 700; }
+
+/* Pago simulado */
+.pago-op { min-height: 64px; }
+.pago-logo { align-self: center; justify-self: end; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: .8rem; letter-spacing: .02em; }
+.pago-tarjeta { background: #1a1f71; color: #fff; font-style: italic; }
+.pago-bizum { background: #05c3dd; color: #fff; }
+.pago-paypal { background: #ffc439; color: #003087; }
+.pasarela { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgb(15 23 42 / .55); backdrop-filter: blur(3px); }
+.pasarela-caja { width: min(380px, 100%); padding: 28px 24px; border-radius: 20px; background: rgb(var(--surface)); text-align: center; box-shadow: var(--shadow-lg); }
+.spinner-oscuro { border-color: rgb(var(--ink) / .15); border-top-color: rgb(var(--accent)); }

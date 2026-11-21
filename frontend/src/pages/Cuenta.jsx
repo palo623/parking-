@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useLang } from '../context/LangContext.jsx';
 import { useTema } from '../context/TemaContext.jsx';
 import { Cargando, Flecha, Icono, Matricula } from '../components/Comunes.jsx';
-import { nombreParking } from '../components/Reserva.jsx';
+import { METODOS_PAGO, nombreParking } from '../components/Reserva.jsx';
 import Justificante from '../components/Justificante.jsx';
 import { PAISES, euros, fecha, fmtMatricula, hora, normMatricula, validarMatricula } from '../utils.js';
 
@@ -212,7 +212,7 @@ function Datos() {
     <Panel titulo={T('Datos personales', 'Dades personals', 'Personal details')}>
       <form className="grid max-w-lg gap-4" onSubmit={guardar}>
         <label className="label">Email<input className="field" value={perfil?.email || ''} disabled /></label>
-        <label className="label">{T('Nombre', 'Nom', 'Name')}<input className="field" autoComplete="name" value={nombre} onChange={(e) => setNombre(e.target.value)} /></label>
+        <label className="label">{T('Nombre y apellidos', 'Nom i cognoms', 'Full name')}<input className="field" autoComplete="name" value={nombre} onChange={(e) => setNombre(e.target.value)} /></label>
         <label className="label">{T('Teléfono', 'Telèfon', 'Phone')}<input className="field" type="tel" autoComplete="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} /></label>
         {error && <p className="note note-danger" role="alert">{error}</p>}
         <button className="btn btn-accent justify-self-start">{T('Guardar cambios', 'Desar canvis', 'Save changes')}</button>
@@ -243,12 +243,11 @@ function Preferencias() {
   const TEMAS = [
     ['claro', ['Claro', 'Clar', 'Light'], 'muestra-clara'],
     ['oscuro', ['Oscuro', 'Fosc', 'Dark'], 'muestra-oscura'],
-    ['sistema', ['Como el dispositivo', 'Com el dispositiu', 'Match device'], 'muestra-auto'],
   ];
   return (
     <div className="grid gap-6">
       <Panel titulo={T('Apariencia', 'Aparença', 'Appearance')} texto={T('Elige cómo quieres ver la web.', 'Tria com vols veure la web.', 'Choose how the site looks.')}>
-        <div className="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label={T('Tema', 'Tema', 'Theme')}>
+        <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label={T('Tema', 'Tema', 'Theme')}>
           {TEMAS.map(([k, n, cls]) => (
             <button key={k} type="button" role="radio" aria-checked={tema === k} className="tema-op" onClick={() => cambiarTema(k)}>
               <span className={`muestra ${cls}`} aria-hidden="true"><i /><i /><i /></span>
@@ -283,13 +282,16 @@ function Preferencias() {
 function Pagos() {
   const { T } = useLang();
   return (
-    <Panel titulo={T('Métodos de pago', 'Mètodes de pagament', 'Payment methods')}>
-      <div className="flex flex-wrap items-center gap-4 rounded-xl border border-dashed border-line/20 p-5">
-        <span className="usp-ico"><Icono nombre="tarjeta" /></span>
-        <div className="min-w-0 flex-1"><p className="font-bold text-ink">{T('Aún no hay pasarela de pago', 'Encara no hi ha passarel·la de pagament', 'No payment gateway yet')}</p>
-          <p className="text-sm text-muted">{T('En el proyecto no se cobra nada. Cuando se conecte, la tarjeta la guardará la pasarela, no nosotros.', 'Al projecte no es cobra res. Quan es connecti, la targeta la desarà la passarel·la, no nosaltres.', 'Nothing is charged in this project. Once connected, the gateway will store the card, not us.')}</p></div>
-        <button type="button" className="btn btn-ghost" disabled>{T('Añadir tarjeta · pronto', 'Afegir targeta · aviat', 'Add card · soon')}</button>
+    <Panel titulo={T('Métodos de pago', 'Mètodes de pagament', 'Payment methods')} texto={T('Al pagar una reserva puedes elegir cualquiera de estos.', 'En pagar una reserva pots triar qualsevol d\'aquests.', 'You can choose any of these when paying for a booking.')}>
+      <div className="grid gap-2.5">
+        {METODOS_PAGO.map(([k, nombre, detalle]) => (
+          <div key={k} className="flex items-center gap-4 rounded-xl border border-line/15 p-4">
+            <span className={`pago-logo pago-${k}`} aria-hidden="true">{k === 'tarjeta' ? 'VISA' : k === 'bizum' ? 'bizum' : 'PayPal'}</span>
+            <div className="min-w-0 flex-1"><p className="font-bold text-ink">{T(...nombre)}</p><p className="text-sm text-muted">{T(...detalle)}</p></div>
+          </div>
+        ))}
       </div>
+      <p className="mt-4 text-sm text-muted">{T('Los pagos son de prueba: no se realiza ningún cargo ni se guardan datos de tarjeta.', 'Els pagaments són de prova: no es fa cap càrrec ni es desen dades de targeta.', 'Payments are in test mode: no charge is made and no card data is stored.')}</p>
     </Panel>
   );
 }

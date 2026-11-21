@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLang } from '../context/LangContext.jsx';
 import { Logo, Matricula } from './Comunes.jsx';
-import { nombreParking, zonaParking } from './Reserva.jsx';
+import { METODOS_PAGO, nombreParking, zonaParking } from './Reserva.jsx';
 import { TIPOS, euros } from '../utils.js';
 
 // Justificante de una reserva, listo para imprimir o guardar como PDF
@@ -25,8 +26,10 @@ export default function Justificante({ reserva: r, onCerrar }) {
   const tipo = r.plaza?.tipo && TIPOS[r.plaza.tipo] ? T(...TIPOS[r.plaza.tipo]) : '';
   const base = r.precio_base ?? Math.round((r.precio_total / 1.1) * 100) / 100;
   const gestion = r.gastos_gestion ?? Math.round((r.precio_total - base) * 100) / 100;
+  const metodo = METODOS_PAGO.find((m) => m[0] === r.metodo_pago);
 
-  return (
+  // Se pinta directamente en <body> para quedar por encima de la cabecera
+  return createPortal((
     <div className="modal-fondo" onClick={onCerrar}>
       <div ref={caja} tabIndex={-1} role="dialog" aria-modal="true" aria-label={T('Justificante de reserva', 'Justificant de reserva', 'Booking receipt')}
         className="modal justificante" onClick={(e) => e.stopPropagation()}>
@@ -51,6 +54,7 @@ export default function Justificante({ reserva: r, onCerrar }) {
             <tr><td className="py-2 text-muted">{T('Tarifa por horas', 'Tarifa per hores', 'Hourly rate')}</td><td className="py-2 text-right text-ink">{eur(base)}</td></tr>
             <tr><td className="py-2 text-muted">{T('Gastos de gestión (10 %)', 'Despeses de gestió (10 %)', 'Booking fee (10 %)')}</td><td className="py-2 text-right text-ink">{eur(gestion)}</td></tr>
             <tr className="border-t border-line/15"><td className="pt-3 font-bold text-ink">Total</td><td className="precio pt-3 text-right text-2xl text-ink">{eur(r.precio_total)}</td></tr>
+            {metodo && <tr><td className="pt-2 text-muted">{T('Pagado con', 'Pagat amb', 'Paid with')}</td><td className="pt-2 text-right text-ink">{metodo[0] === 'tarjeta' ? T(...metodo[2]) : T(...metodo[1])}{r.pago_ref && <span className="block font-mono text-xs text-muted">{r.pago_ref}</span>}</td></tr>}
           </tbody>
         </table>
 
@@ -70,5 +74,5 @@ export default function Justificante({ reserva: r, onCerrar }) {
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 }

@@ -31,6 +31,9 @@ export const api = {
   parkingsDisponibles: (inicio, fin, tipo = 'normal') =>
     request(`/parkings/disponibles?${new URLSearchParams({ inicio, fin, tipo })}`),
 
+  asistenteEstado: () => request('/asistente/estado'),
+  asistente: (mensajes) => request('/asistente', { method: 'POST', body: { mensajes } }),
+
   // Cliente
   misReservas: () => request('/reservas'),
   crearReserva: (datos) => request('/reservas', { method: 'POST', body: datos }),

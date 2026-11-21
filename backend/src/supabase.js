@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en backend/.env');
-  process.exit(1);
+  // En local van en backend/.env; en Vercel, en Settings → Environment Variables
+  throw new Error('Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY (backend/.env o variables de Vercel)');
 }
 
 // Cliente con service_role: solo se usa en el servidor

@@ -59,6 +59,12 @@ export default function Navbar() {
             <span className="mx-1 hidden h-4 w-px bg-line/15 sm:block" aria-hidden="true" />
             {session ? (
               <div className="flex min-w-0 items-center">
+                {esAdmin && (
+                  <Link to="/admin" className="top-link top-admin" title={T('Panel administrador', "Panell d'administració", 'Admin panel')}>
+                    <svg className="ico !h-4 !w-4" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z" /><path d="M9 12l2 2 4-4" /></svg>
+                    <span>{T('Panel admin', 'Panell admin', 'Admin')}</span>
+                  </Link>
+                )}
                 <Link to="/perfil" className="top-link min-w-0" title={nombre}><svg className="ico !h-4 !w-4" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg><span>{t('n.profile')}</span></Link>
                 <button type="button" className="top-link" onClick={salir}>{t('n.logout')}</button>
               </div>

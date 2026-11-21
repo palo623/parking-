@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLang } from '../context/LangContext.jsx';
+import { api } from '../api.js';
 
-// Instrucciones para el asistente (se usarán al conectar Gemini con la clave
-// de Google AI Studio, que irá en el backend, nunca en el navegador).
+// Resumen de cómo se comporta el asistente. Las instrucciones completas
+// están en backend/src/routes/asistente.js (con las tarifas reales).
 export const INSTRUCCIONES_ASISTENTE = `Eres el asistente de Tarraco Parkings, un servicio de reserva de plazas
 en tres parkings de Tarragona (Centro, Puerto y Estación).
 Responde SOLO a dudas sobre: reservas, tarifas y precios, horarios, tipos de plaza,
@@ -18,46 +19,86 @@ const SUGERENCIAS = [
   ['¿Qué pasa si salgo más tarde?', 'Què passa si surto més tard?', 'What if I leave late?'],
 ];
 
-// Botón flotante abajo a la derecha. De momento solo abre el panel:
-// el chat se conectará más adelante.
+// Texto con **negritas** y saltos de línea, sin HTML
+function Formato({ texto }) {
+  return texto.split('\n').map((linea, i) => (
+    <span key={i} className="block">
+      {linea.split(/(\*\*[^*]+\*\*)/g).map((t, j) => (t.startsWith('**') && t.endsWith('**') ? <strong key={j}>{t.slice(2, -2)}</strong> : t))}
+    </span>
+  ));
+}
+
+// Botón flotante abajo a la derecha que abre el chat del parking.
+// Las preguntas van al backend (/api/asistente), que habla con Gemini.
 export default function Asistente() {
   const { T } = useLang();
   const [abierto, setAbierto] = useState(false);
+  const [activo, setActivo] = useState(null); // null = comprobando
+  const [mensajes, setMensajes] = useState([]);
+  const [texto, setTexto] = useState('');
+  const [pensando, setPensando] = useState(false);
   const panel = useRef(null);
+  const final = useRef(null);
 
   useEffect(() => {
     if (!abierto) return undefined;
     panel.current?.focus();
+    if (activo === null) api.asistenteEstado().then((r) => setActivo(r.activo)).catch(() => setActivo(false));
     const esc = (e) => { if (e.key === 'Escape') setAbierto(false); };
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
-  }, [abierto]);
+  }, [abierto, activo]);
+
+  useEffect(() => { final.current?.scrollIntoView({ block: 'end' }); }, [mensajes, pensando]);
+
+  const preguntar = async (pregunta) => {
+    const q = pregunta.trim();
+    if (!q || pensando || !activo) return;
+    const nuevos = [...mensajes, { rol: 'usuario', texto: q }];
+    setMensajes(nuevos);
+    setTexto('');
+    setPensando(true);
+    try {
+      const r = await api.asistente(nuevos);
+      setMensajes((m) => [...m, { rol: 'asistente', texto: r.texto }]);
+    } catch (e) {
+      setMensajes((m) => [...m, { rol: 'asistente', texto: e.message, error: true }]);
+    } finally {
+      setPensando(false);
+    }
+  };
 
   return (
     <div className="asistente">
       {abierto && (
         <section ref={panel} tabIndex={-1} className="asistente-panel panel-in" aria-label={T('Asistente', 'Assistent', 'Assistant')}>
-          <header className="flex items-center gap-3 border-b border-line/10 p-4">
+          <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-line/10 bg-surface p-4">
             <span className="asistente-avatar" aria-hidden="true">P</span>
-            <div className="min-w-0 flex-1">
-              <p className="font-display font-extrabold text-ink">{T('Asistente Tarraco', 'Assistent Tarraco', 'Tarraco assistant')}</p>
-              <p className="text-xs text-muted">{T('Solo dudas sobre el parking', 'Només dubtes sobre el pàrquing', 'Parking questions only')}</p>
-            </div>
-            <span className="tag tag-warn">{T('Pronto', 'Aviat', 'Soon')}</span>
+            <p className="min-w-0 flex-1 font-display font-extrabold text-ink">{T('Asistente Tarraco', 'Assistent Tarraco', 'Tarraco assistant')}</p>
+            {activo === false && <span className="tag tag-warn">{T('Pronto', 'Aviat', 'Soon')}</span>}
             <button type="button" className="grid h-10 w-10 place-items-center rounded-lg text-muted hover:bg-sunken" onClick={() => setAbierto(false)} aria-label={T('Cerrar', 'Tancar', 'Close')}>
               <svg className="ico !h-5 !w-5" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </header>
-          <div className="grid gap-3 p-4">
+          <div className="grid gap-3 p-4" aria-live="polite">
             <p className="burbuja">{T('¡Hola! Soy el asistente de Tarraco Parkings. Te ayudaré con reservas, tarifas, la barrera y tu cuenta.', 'Hola! Sóc l\'assistent de Tarraco Parkings. T\'ajudaré amb reserves, tarifes, la barrera i el teu compte.', 'Hi! I\'m the Tarraco Parkings assistant. I\'ll help with bookings, prices, the barrier and your account.')}</p>
-            <p className="burbuja">{T('Todavía no estoy conectado. Mientras tanto, tienes las respuestas en Ayuda.', 'Encara no estic connectat. Mentrestant, tens les respostes a Ajuda.', 'I\'m not connected yet. Meanwhile, the answers are in Help.')}</p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              {SUGERENCIAS.map((s) => <button key={s[0]} type="button" className="chip !min-h-[36px] text-sm" disabled>{T(...s)}</button>)}
-            </div>
+            {activo === false && <p className="burbuja">{T('Todavía no estoy conectado. Mientras tanto, tienes las respuestas en Ayuda.', 'Encara no estic connectat. Mentrestant, tens les respostes a Ajuda.', 'I\'m not connected yet. Meanwhile, the answers are in Help.')}</p>}
+            {mensajes.map((m, i) => (
+              <p key={i} className={m.rol === 'usuario' ? 'burbuja burbuja-yo' : `burbuja${m.error ? ' text-danger' : ''}`}><Formato texto={m.texto} /></p>
+            ))}
+            {pensando && <p className="burbuja text-muted"><span className="spinner" /> {T('Escribiendo…', 'Escrivint…', 'Typing…')}</p>}
+            {mensajes.length === 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {SUGERENCIAS.map((s) => <button key={s[0]} type="button" className="chip !min-h-[36px] text-sm" disabled={!activo} onClick={() => preguntar(T(...s))}>{T(...s)}</button>)}
+              </div>
+            )}
+            <span ref={final} />
           </div>
-          <form className="flex gap-2 border-t border-line/10 p-3" onSubmit={(e) => e.preventDefault()}>
-            <input className="field !min-h-[44px]" disabled placeholder={T('Disponible pronto…', 'Disponible aviat…', 'Available soon…')} aria-label={T('Escribe tu pregunta', 'Escriu la teva pregunta', 'Type your question')} />
-            <button type="submit" className="btn btn-accent !min-h-[44px] !px-4" disabled aria-label={T('Enviar', 'Enviar', 'Send')}>
+          <form className="sticky bottom-0 flex gap-2 border-t border-line/10 bg-surface p-3" onSubmit={(e) => { e.preventDefault(); preguntar(texto); }}>
+            <input className="field !min-h-[44px]" disabled={!activo} maxLength={800} value={texto} onChange={(e) => setTexto(e.target.value)}
+              placeholder={activo ? T('Escribe tu pregunta…', 'Escriu la teva pregunta…', 'Type your question…') : T('Disponible pronto…', 'Disponible aviat…', 'Available soon…')}
+              aria-label={T('Escribe tu pregunta', 'Escriu la teva pregunta', 'Type your question')} />
+            <button type="submit" className="btn btn-accent !min-h-[44px] !px-4" disabled={!activo || pensando || !texto.trim()} aria-label={T('Enviar', 'Enviar', 'Send')}>
               <svg className="ico !h-5 !w-5" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5z" /></svg>
             </button>
           </form>

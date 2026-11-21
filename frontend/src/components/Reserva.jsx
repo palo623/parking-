@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -45,6 +46,13 @@ function leerBorrador() {
   } catch { return null; }
 }
 
+// Métodos del pago simulado (no se piden datos reales de tarjeta)
+export const METODOS_PAGO = [
+  ['tarjeta', ['Tarjeta', 'Targeta', 'Card'], ['Tarjeta de prueba •••• 4242', 'Targeta de prova •••• 4242', 'Test card •••• 4242']],
+  ['bizum', ['Bizum', 'Bizum', 'Bizum'], ['Pago con el móvil', 'Pagament amb el mòbil', 'Pay with your phone']],
+  ['paypal', ['PayPal', 'PayPal', 'PayPal'], ['Cuenta PayPal', 'Compte PayPal', 'PayPal account']],
+];
+
 export default function Reserva({ pedido, onReservada }) {
   const { session } = useAuth();
   const { t, T, lang, locale, avisar } = useLang();
@@ -68,6 +76,8 @@ export default function Reserva({ pedido, onReservada }) {
   const [terms, setTerms] = useState(Boolean(borrador));
   const [errores, setErrores] = useState({});
   const [paying, setPaying] = useState(false);
+  const [metodo, setMetodo] = useState('tarjeta');
+  const [fasePago, setFasePago] = useState(null); // null | 'procesando' | 'autorizado'
   const [last, setLast] = useState(null);
 
   // Disponibilidad leída del backend
@@ -167,14 +177,23 @@ export default function Reserva({ pedido, onReservada }) {
     }
 
     setPaying(true);
+    setFasePago('procesando');
+    const espera = (ms) => new Promise((ok) => setTimeout(ok, ms));
     try {
-      const r = await api.crearReserva({
-        parking_id: elegido.id,
-        tipo,
-        matricula: normMatricula(plate),
-        inicio: inicio.toISOString(),
-        fin: fin.toISOString(),
-      });
+      // Pago simulado: se muestra como una pasarela, pero no se cobra nada
+      const [r] = await Promise.all([
+        api.crearReserva({
+          parking_id: elegido.id,
+          tipo,
+          matricula: normMatricula(plate),
+          inicio: inicio.toISOString(),
+          fin: fin.toISOString(),
+          metodo_pago: metodo,
+        }),
+        espera(1600),
+      ]);
+      setFasePago('autorizado');
+      await espera(900);
       setLast(r);
       onReservada?.(r);
       setReintento((n) => n + 1); // refresca plazas libres
@@ -183,6 +202,7 @@ export default function Reserva({ pedido, onReservada }) {
       setErrores({ pago: e.message });
     } finally {
       setPaying(false);
+      setFasePago(null);
     }
   };
 
@@ -383,6 +403,23 @@ export default function Reserva({ pedido, onReservada }) {
             ))}
           </dl>
 
+          <fieldset className="mt-6">
+            <legend className="legend">{T('Método de pago', 'Mètode de pagament', 'Payment method')}</legend>
+            <div className="mt-3 grid gap-2.5" role="radiogroup">
+              {METODOS_PAGO.map(([k, nombre, detalle]) => (
+                <label key={k} className={`park pago-op ${metodo === k ? 'is-sel' : ''}`}>
+                  <input className="sr-only" type="radio" name="metodo" value={k} checked={metodo === k} onChange={() => setMetodo(k)} />
+                  <span className="radio row-span-2" aria-hidden="true" />
+                  <span className="min-w-0">
+                    <span className="block font-bold leading-tight text-ink">{T(...nombre)}</span>
+                    <span className="block text-sm text-muted">{T(...detalle)}</span>
+                  </span>
+                  <span className={`pago-logo pago-${k} row-span-2`} aria-hidden="true">{k === 'tarjeta' ? 'VISA' : k === 'bizum' ? 'bizum' : 'PayPal'}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           <label className="mt-5 flex min-h-[44px] cursor-pointer items-start gap-3 text-sm">
             <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--primary))]" checked={terms}
               onChange={(e) => { setTerms(e.target.checked); setErrores({}); }} />
@@ -396,8 +433,8 @@ export default function Reserva({ pedido, onReservada }) {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t-[1.5px] border-line/10 pt-5">
             <button type="button" className="btn btn-ghost" onClick={() => { if (!paying) irA(1, true); }}>{t('b.back')}</button>
             <button type="button" className="btn btn-accent max-sm:flex-1" disabled={paying} onClick={pagar}>
-              {paying ? <><span className="spinner" />{T('Guardando…', 'Desant…', 'Saving…')}</>
-                : session ? `${T('Reservar', 'Reservar', 'Book')} · ${elegido ? eur(elegido.precio_total) : ''}`
+              {paying ? <><span className="spinner" />{T('Pagando…', 'Pagant…', 'Paying…')}</>
+                : session ? <><svg className="ico !h-5 !w-5" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>{`${T('Pagar', 'Pagar', 'Pay')} ${elegido ? eur(elegido.precio_total) : ''}`}</>
                   : <><span>{T('Entrar y reservar', 'Entrar i reservar', 'Sign in and book')}</span><Flecha /></>}
             </button>
           </div>
@@ -421,7 +458,8 @@ export default function Reserva({ pedido, onReservada }) {
               <div><dt className="text-muted">{T('Día', 'Dia', 'Day')}</dt><dd className="font-bold text-ink">{new Date(last.inicio).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' })}</dd></div>
               <div><dt className="text-muted">{T('Horario', 'Horari', 'Time')}</dt><dd className="tnum font-bold text-ink">{new Date(last.inicio).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} – {new Date(last.fin).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</dd></div>
               <div><dt className="text-muted">{T('Matrícula', 'Matrícula', 'Plate')}</dt><dd><Matricula valor={last.matricula} className="mt-1 text-sm" /></dd></div>
-              <div><dt className="text-muted">Total</dt><dd className="tnum precio text-xl text-ink">{eur(last.precio_total)}</dd></div>
+              <div><dt className="text-muted">{T('Pagado', 'Pagat', 'Paid')}</dt><dd className="tnum precio text-xl text-ink">{eur(last.precio_total)}</dd>
+                {last.metodo_pago && <dd className="text-xs text-muted">{T(...(METODOS_PAGO.find((m) => m[0] === last.metodo_pago) || METODOS_PAGO[0])[1])}</dd>}</div>
             </dl>
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
@@ -437,6 +475,28 @@ export default function Reserva({ pedido, onReservada }) {
       )}
       </div>
       {verJustificante && last && <Justificante reserva={last} onCerrar={() => setVerJustificante(false)} />}
+      {fasePago && createPortal(
+        <div className="pasarela" role="alertdialog" aria-modal="true" aria-live="assertive" aria-label={T('Pago', 'Pagament', 'Payment')}>
+          <div className="pasarela-caja panel-in">
+            <p className="flex items-center justify-center gap-2 text-sm font-semibold text-muted">
+              <svg className="ico !h-4 !w-4" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+              {T('Pago seguro', 'Pagament segur', 'Secure payment')}
+            </p>
+            <p className="tnum precio mt-3 text-4xl text-ink">{elegido ? eur(elegido.precio_total) : ''}</p>
+            <p className="mt-1 text-sm text-muted">Tarraco Parkings · {T(...(METODOS_PAGO.find((m) => m[0] === metodo) || METODOS_PAGO[0])[1])}</p>
+            {fasePago === 'procesando' ? (
+              <p className="mt-6 flex items-center justify-center gap-3 font-semibold text-ink"><span className="spinner spinner-oscuro" />{T('Procesando el pago…', 'Processant el pagament…', 'Processing payment…')}</p>
+            ) : (
+              <p className="mt-6 flex items-center justify-center gap-2 font-bold text-ok">
+                <svg className="ico !h-6 !w-6" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10" strokeWidth="3" /></svg>
+                {T('Pago autorizado', 'Pagament autoritzat', 'Payment approved')}
+              </p>
+            )}
+            <p className="mt-5 text-xs text-muted">{T('Modo de prueba: no se realiza ningún cargo.', 'Mode de prova: no es fa cap càrrec.', 'Test mode: no charge is made.')}</p>
+          </div>
+        </div>,
+        document.body,
+      )}
     </section>
   );
 }

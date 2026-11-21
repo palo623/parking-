@@ -35,7 +35,14 @@ export default function Admin() {
       setError(e.message);
     }
   };
-  useEffect(() => { cargar(); }, []);
+  // Se actualiza solo: al entrar, cada 15 segundos y al volver a la pestaña
+  useEffect(() => {
+    cargar();
+    const id = setInterval(cargar, 15000);
+    const alVolver = () => { if (document.visibilityState === 'visible') cargar(); };
+    document.addEventListener('visibilitychange', alVolver);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', alVolver); };
+  }, []);
 
   const accion = async (fn, ok) => {
     setError('');
@@ -63,12 +70,18 @@ export default function Admin() {
     accion(() => api.admin.editarPlaza(id, { precio_hora: String(valor).replace(',', '.') }), T('Precio actualizado', 'Preu actualitzat', 'Price updated'));
   };
 
-  const q = filtro.toLowerCase();
-  const reservasFiltradas = (reservas || []).filter((r) =>
-    !q || [r.codigo, r.matricula, r.plaza?.codigo, r.plaza?.parking?.nombre, r.usuario?.nombre].join(' ').toLowerCase().includes(q));
+  // Búsqueda sin importar mayúsculas, acentos, espacios ni guiones («2716 khg» = «2716KHG», «nuria» = «Núria»)
+  const normal = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const junto = (t) => t.replace(/[\s\-·.]/g, '');
+  const q = normal(filtro.trim());
+  const reservasFiltradas = (reservas || []).filter((r) => {
+    if (!q) return true;
+    const texto = normal([r.codigo, r.matricula, r.plaza?.codigo, r.plaza?.parking?.nombre, r.usuario?.nombre, r.usuario?.telefono, r.estado, r.metodo_pago, r.pago_ref, fecha(r.inicio, locale)].join(' '));
+    return texto.includes(q) || junto(texto).includes(junto(q));
+  });
 
   const kpis = resumen && [
-    [T('Plazas activas', 'Places actives', 'Active spaces'), resumen.plazas_activas],
+    [T('Plazas libres ahora', 'Places lliures ara', 'Free spaces now'), `${resumen.libres_ahora} / ${resumen.plazas_activas}`],
     [T('Ocupadas ahora', 'Ocupades ara', 'Occupied now'), resumen.ocupadas_ahora],
     [T('Reservas pendientes', 'Reserves pendents', 'Upcoming bookings'), resumen.reservas_pendientes],
     [T('Ingresos', 'Ingressos', 'Revenue'), eur(resumen.ingresos_totales)],
@@ -113,7 +126,7 @@ export default function Admin() {
                           <td><Matricula valor={r.matricula} className="text-xs" /></td>
                           <td>{fecha(r.inicio, locale)}</td>
                           <td>{fecha(r.fin, locale)}</td>
-                          <td className="font-mono font-bold text-ink">{eur(r.precio_total)}</td>
+                          <td className="font-mono font-bold text-ink">{eur(r.precio_total)}{r.metodo_pago && <><br /><span className="font-sans text-xs font-normal capitalize text-muted">{r.metodo_pago}</span></>}</td>
                           <td>
                             <select className="field !min-h-[40px] !w-auto" aria-label={T('Estado', 'Estat', 'Status')} value={r.estado}
                               onChange={(e) => accion(() => api.admin.cambiarEstado(r.id, e.target.value), T('Estado cambiado', 'Estat canviat', 'Status changed'))}>

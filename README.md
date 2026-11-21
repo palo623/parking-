@@ -22,7 +22,7 @@ Web para reservar plazas en los parkings de Tarragona (proyecto ASIX2). Disponib
 ### 1. Supabase
 1. Crea un proyecto en [supabase.com](https://supabase.com).
 2. Ve a **SQL Editor → New query**, pega el contenido de `supabase/schema.sql` y pulsa **Run**.
-3. Haz lo mismo con `supabase/02_rediseno.sql` (añade los parkings, el código de reserva y la tabla `accesos`) después con `supabase/03_cuenta.sql` (vehículos guardados, preferencias y nombre al entrar con Google) y por último `supabase/04_seguridad.sql`. Se pueden ejecutar más de una vez.
+3. Haz lo mismo con `supabase/02_rediseno.sql` (añade los parkings, el código de reserva y la tabla `accesos`) después con `supabase/03_cuenta.sql` (vehículos guardados, preferencias y nombre al entrar con Google) luego `supabase/04_seguridad.sql` y por último `supabase/05_pago.sql` (pago simulado: método y referencia de cada reserva). Se pueden ejecutar más de una vez.
    *(En el proyecto de Supabase de Tarraco Parkings ya están aplicados los cuatro.)*
 4. En **Project Settings → API** copia la *Project URL*, la clave *anon public* y la clave *service_role*.
 5. (Opcional, para pruebas) En **Authentication → Providers → Email** puedes desactivar *Confirm email*.
@@ -81,4 +81,26 @@ where id = (select id from auth.users where email = 'TU_EMAIL');
 - **Justificante** de cada reserva, imprimible o en PDF desde el navegador.
 - **Mi cuenta:** resumen y «reservar otra vez», vehículos guardados, justificantes, datos, preferencias (tema claro/oscuro, idioma, avisos), métodos de pago (pendiente de pasarela) y seguridad.
 - **Cookies:** «Solo necesarias» o «Aceptar todas»; se recuerda la elección.
-- **Asistente:** botón abajo a la derecha, todavía sin conectar. Las instrucciones para Gemini están en `frontend/src/components/Asistente.jsx`; la clave de Google AI Studio irá en `backend/.env`, nunca en el frontend.
+- **Asistente:** botón abajo a la derecha. Usa Gemini a través del backend (`/api/asistente`), con las tarifas reales de la base de datos. Para activarlo, pon `GEMINI_API_KEY=...` (Google AI Studio → Get API key) en `backend/.env` y reinicia el backend. La clave nunca va en el frontend.
+
+## Publicar en Vercel
+
+El proyecto ya está preparado: `vercel.json` compila el frontend (`frontend/dist`) y `api/index.js` publica la API de Express como función de Vercel en `/api/...`. Todo queda en el mismo dominio.
+
+1. Sube el proyecto a tu repositorio de GitHub (los `.env` no se suben).
+2. En [vercel.com](https://vercel.com) → **Add New → Project** → importa el repositorio. No cambies nada de *Build settings*: lo lee de `vercel.json`.
+3. En **Environment Variables** añade (los mismos valores que en tus `.env`):
+
+   | Variable | Valor |
+   |---|---|
+   | `SUPABASE_URL` | URL del proyecto de Supabase |
+   | `SUPABASE_SERVICE_ROLE_KEY` | clave **service_role** (secreta) |
+   | `GEMINI_API_KEY` | clave de Google AI Studio (chatbot) |
+   | `VITE_SUPABASE_URL` | la misma URL de Supabase |
+   | `VITE_SUPABASE_ANON_KEY` | clave **anon public** |
+   | `NODE_ENV` | `production` |
+
+4. Pulsa **Deploy**.
+5. En Supabase → **Authentication → URL Configuration**, pon la dirección de Vercel (`https://tu-proyecto.vercel.app`) en *Site URL* y en *Redirect URLs*, para que el email de confirmación y el login con Google vuelvan a la web publicada.
+
+En local todo sigue igual: `npm run backend` y `npm run frontend`.

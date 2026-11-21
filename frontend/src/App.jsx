@@ -43,6 +43,14 @@ export default function App() {
     if (volver) navigate(volver, { replace: true });
   }, [session, navigate]);
 
+  // Al iniciar sesión, un administrador entra directamente en su panel
+  useEffect(() => {
+    if (!perfil?.id) return; // espera al perfil real de la base de datos
+    let entrando = false;
+    try { entrando = sessionStorage.getItem('tp-entrando') === '1'; sessionStorage.removeItem('tp-entrando'); } catch { /* nada */ }
+    if (entrando && perfil.rol === 'admin') navigate('/admin', { replace: true });
+  }, [perfil?.rol, perfil?.id, navigate]);
+
   // Al cambiar de página (sin #ancla), vuelve arriba
   useEffect(() => {
     if (!hash) { window.scrollTo(0, 0); return; }
