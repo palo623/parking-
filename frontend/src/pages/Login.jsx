@@ -1,60 +1,101 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useToast } from '../context/ToastContext.jsx';
-import AuthLayout from '../components/AuthLayout.jsx';
-import Icono from '../components/Icono.jsx';
+import { useLang } from '../context/LangContext.jsx';
+import { Flecha } from '../components/Comunes.jsx';
 
-const traducir = (m) =>
-  ({
-    'Invalid login credentials': 'Email o contraseña incorrectos',
-    'Email not confirmed': 'Todavía no has confirmado tu email. Revisa tu correo.',
-  })[m] || m;
+// Botón «Continuar con Google» (logotipo oficial de la G, como pide Google)
+export function BotonGoogle({ desde }) {
+  const { loginGoogle } = useAuth();
+  const { T } = useLang();
+  const [error, setError] = useState('');
+  const [yendo, setYendo] = useState(false);
+  const pulsar = async () => {
+    setError('');
+    setYendo(true);
+    const { error } = await loginGoogle(desde);
+    if (error) { setError(error.message); setYendo(false); }
+  };
+  return (
+    <div className="mt-6">
+      <button type="button" className="btn btn-google w-full" onClick={pulsar} disabled={yendo}>
+        <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
+          <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+          <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+          <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
+        </svg>
+        {yendo ? T('Abriendo Google…', 'Obrint Google…', 'Opening Google…') : T('Continuar con Google', 'Continua amb Google', 'Continue with Google')}
+      </button>
+      {error && <p className="note note-danger mt-3" role="alert">{error}</p>}
+      <p className="mt-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-muted">
+        <span className="h-px flex-1 bg-line/15" aria-hidden="true" />{T('o con tu email', 'o amb el teu correu', 'or with your email')}<span className="h-px flex-1 bg-line/15" aria-hidden="true" />
+      </p>
+    </div>
+  );
+}
+
+// Caja centrada común a Entrar y Crear cuenta
+export function CajaCuenta({ eyebrow, titulo, children }) {
+  return (
+    <section className="band">
+      <div className="wrap grid place-items-center">
+        <div className="booking w-full max-w-md p-6 sm:p-8">
+          <p className="eyebrow">{eyebrow}</p>
+          <h1 className="display mt-2 text-5xl leading-none">{titulo}</h1>
+          {children}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function Login() {
   const { login } = useAuth();
-  const toast = useToast();
+  const { T } = useLang();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const desde = location.state?.desde || '/';
 
   const enviar = async (e) => {
     e.preventDefault();
     setEnviando(true);
     setError('');
-    const { error } = await login(email.trim(), password);
+    const { error } = await login(email, password);
     setEnviando(false);
-    if (error) return setError(traducir(error.message));
-    toast.ok('¡Hola de nuevo!');
-    navigate(location.state?.desde || '/reservar', { replace: true });
+    if (error) {
+      return setError(error.message === 'Invalid login credentials'
+        ? T('Email o contraseña incorrectos.', 'Correu o contrasenya incorrectes.', 'Wrong email or password.') : error.message);
+    }
+    navigate(desde, { replace: true });
   };
 
   return (
-    <AuthLayout>
-      <form className="formulario" onSubmit={enviar}>
-        <div>
-          <h1>Entrar</h1>
-          <p className="texto-2" style={{ margin: 0 }}>Accede para reservar y ver tus tickets.</p>
-        </div>
-        {error && <div className="alerta alerta-error"><Icono nombre="alerta" /> {error}</div>}
-        <label className="campo">
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus autoComplete="email" />
+    <CajaCuenta eyebrow={T('Tu cuenta', 'El teu compte', 'Your account')} titulo={T('Entrar', 'Entrar', 'Sign in')}>
+      {desde.includes('reservar') && (
+        <p className="note note-warn mt-4">{T('Tu reserva está guardada. Entra y la confirmas en un clic.', 'La teva reserva està desada. Entra i la confirmes amb un clic.', 'Your booking is saved. Sign in and confirm it in one click.')}</p>
+      )}
+      <BotonGoogle desde={desde} />
+      <form className="mt-5 grid gap-4" onSubmit={enviar}>
+        <label className="label">Email
+          <input className="field" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
         </label>
-        <label className="campo">
-          <span style={{ display: 'flex', justifyContent: 'space-between' }}>
-            Contraseña <Link to="/recuperar" style={{ fontWeight: 500 }}>¿La has olvidado?</Link>
-          </span>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+        <label className="label">{T('Contraseña', 'Contrasenya', 'Password')}
+          <input className="field" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </label>
-        <button className="btn btn-grande btn-bloque" disabled={enviando}>
-          {enviando ? <><span className="spinner" /> Entrando…</> : 'Entrar'}
+        {error && <p className="note note-danger" role="alert">{error}</p>}
+        <button className="btn btn-accent w-full" disabled={enviando}>
+          {enviando ? <><span className="spinner" />{T('Entrando…', 'Entrant…', 'Signing in…')}</> : <><span>{T('Entrar', 'Entrar', 'Sign in')}</span><Flecha /></>}
         </button>
-        <p className="separador">¿No tienes cuenta? <Link to="/registro" state={location.state}>Créala gratis</Link></p>
       </form>
-    </AuthLayout>
+      <p className="mt-5 text-sm">
+        {T('¿No tienes cuenta?', 'No tens compte?', 'No account yet?')}{' '}
+        <Link to="/registro" state={location.state} className="font-bold text-link underline underline-offset-4">{T('Créala en un minuto', 'Crea-la en un minut', 'Create one in a minute')}</Link>
+      </p>
+    </CajaCuenta>
   );
 }

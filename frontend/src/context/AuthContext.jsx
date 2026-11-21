@@ -8,14 +8,13 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [perfil, setPerfil] = useState(null);
   const [cargando, setCargando] = useState(true);
-  const [recuperando, setRecuperando] = useState(false);
 
   const cargarPerfil = useCallback(async (s) => {
     if (!s) return setPerfil(null);
     try {
       setPerfil(await api.perfil());
     } catch {
-      setPerfil({ email: s.user.email, rol: 'cliente', nombre: s.user.user_metadata?.nombre || '' });
+      setPerfil({ email: s.user.email, rol: 'cliente', nombre: '' });
     }
   }, []);
 
@@ -25,11 +24,9 @@ export function AuthProvider({ children }) {
       await cargarPerfil(data.session);
       setCargando(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((evento, s) => {
-      if (evento === 'PASSWORD_RECOVERY') setRecuperando(true);
+    const { data: sub } = supabase.auth.onAuthStateChange((_evento, s) => {
       setSession(s);
-      // Se aplaza para no bloquear el callback de Supabase
-      setTimeout(() => cargarPerfil(s), 0);
+      cargarPerfil(s);
     });
     return () => sub.subscription.unsubscribe();
   }, [cargarPerfil]);
@@ -39,20 +36,16 @@ export function AuthProvider({ children }) {
     perfil,
     setPerfil,
     cargando,
-    recuperando,
-    setRecuperando,
     esAdmin: perfil?.rol === 'admin',
-    nombreVisible: perfil?.nombre || session?.user?.email?.split('@')[0] || '',
     login: (email, password) => supabase.auth.signInWithPassword({ email, password }),
     registro: (email, password, nombre, telefono) =>
-      supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { nombre, telefono }, emailRedirectTo: window.location.origin },
-      }),
-    enviarRecuperacion: (email) =>
-      supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/nueva-contrasena` }),
-    cambiarContrasena: (password) => supabase.auth.updateUser({ password }),
+      supabase.auth.signUp({ email, password, options: { data: { nombre, telefono } } }),
+    // Entrar o crear cuenta con Google. Supabase lleva a la página de Google
+    // y vuelve a la web; guardamos a dónde había que volver.
+    loginGoogle: (desde = '/') => {
+      try { sessionStorage.setItem('tp-volver', desde); } catch { /* sin almacenamiento */ }
+      return supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
+    },
     logout: () => supabase.auth.signOut(),
   };
 

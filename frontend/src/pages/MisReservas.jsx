@@ -1,159 +1,109 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
-import { useToast } from '../context/ToastContext.jsx';
-import Icono from '../components/Icono.jsx';
-import { Confirmar } from '../components/Modal.jsx';
-import { ModalAmpliar, ModalValorar } from '../components/ModalesReserva.jsx';
-import { Estrellas } from '../components/Estrellas.jsx';
-import Vacio from '../components/Vacio.jsx';
-import { TIPOS, ESTADOS, euros, fecha, planta, duracion, estadoReal, tiempoRelativo } from '../utils.js';
+import { useLang } from '../context/LangContext.jsx';
+import { Cabecera, Cargando, Flecha, Matricula } from '../components/Comunes.jsx';
+import { nombreParking } from '../components/Reserva.jsx';
+import { euros, fecha, hora } from '../utils.js';
+import Justificante from '../components/Justificante.jsx';
+
+const ESTADOS = {
+  confirmada: ['tag-ok', 'Confirmada', 'Confirmada', 'Confirmed'],
+  completada: ['tag-warn', 'Completada', 'Completada', 'Completed'],
+  cancelada: ['tag-danger', 'Cancelada', 'Cancel·lada', 'Cancelled'],
+};
 
 export default function MisReservas() {
-  const toast = useToast();
+  const { T, lang, locale, avisar } = useLang();
   const [reservas, setReservas] = useState(null);
   const [error, setError] = useState('');
-  const [pestana, setPestana] = useState('proximas');
-  const [aCancelar, setACancelar] = useState(null);
+  const [confirmando, setConfirmando] = useState(null); // id de la reserva que se va a cancelar
   const [cancelando, setCancelando] = useState(false);
-  const [aAmpliar, setAAmpliar] = useState(null);
-  const [aValorar, setAValorar] = useState(null);
-
-  const valoracionDe = (r) => (Array.isArray(r.valoracion) ? r.valoracion[0] : r.valoracion);
+  const [justificante, setJustificante] = useState(null);
 
   const cargar = () => api.misReservas().then(setReservas).catch((e) => setError(e.message));
   useEffect(() => { cargar(); }, []);
 
-  const cancelar = async () => {
+  const cancelar = async (id) => {
     setCancelando(true);
     try {
-      await api.cancelarReserva(aCancelar.id);
-      toast.ok(`Reserva de la plaza ${aCancelar.plaza?.codigo} cancelada`);
-      setACancelar(null);
-      cargar();
+      await api.cancelarReserva(id);
+      avisar(T('Reserva cancelada', 'Reserva cancel·lada', 'Booking cancelled'));
+      setConfirmando(null);
+      await cargar();
     } catch (e) {
-      toast.error(e.message);
+      setError(e.message);
     } finally {
       setCancelando(false);
     }
   };
 
-  const conEstado = (reservas || []).map((r) => ({ ...r, estadoActual: estadoReal(r) }));
-  const proximas = conEstado
-    .filter((r) => ['confirmada', 'en_curso'].includes(r.estadoActual))
-    .sort((a, b) => new Date(a.inicio) - new Date(b.inicio));
-  const historial = conEstado.filter((r) => !['confirmada', 'en_curso'].includes(r.estadoActual));
-  const gastado = conEstado.filter((r) => r.estado !== 'cancelada').reduce((s, r) => s + Number(r.precio_total), 0);
-  const lista = pestana === 'proximas' ? proximas : historial;
+  const ahora = new Date();
+  const proximas = (reservas || []).filter((r) => r.estado === 'confirmada' && new Date(r.fin) > ahora);
+  const historial = (reservas || []).filter((r) => !proximas.includes(r));
+
+  const Tarjeta = ({ r }) => {
+    const [cls, ...nombres] = ESTADOS[r.estado] || ESTADOS.confirmada;
+    const cancelable = r.estado === 'confirmada' && new Date(r.inicio) > ahora;
+    return (
+      <article className="card grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-lg font-bold tracking-widest text-ink">{r.codigo || `#${r.id}`}</span>
+            <span className={`tag ${cls}`}>{T(...nombres)}</span>
+          </div>
+          <p className="mt-1 font-bold text-ink">{nombreParking(r.plaza?.parking, lang) || 'Parking'} · {T('plaza', 'plaça', 'space')} {r.plaza?.codigo}</p>
+          <p className="tnum text-sm">{fecha(r.inicio, locale)} – {hora(r.fin, locale)}</p>
+          <Matricula valor={r.matricula} className="mt-2 text-sm" />
+        </div>
+        <div className="flex flex-wrap items-center gap-3 sm:flex-col sm:items-end">
+          <span className="tnum font-mono text-2xl font-bold text-ink">{euros(r.precio_total, locale)}</span>
+          {r.estado !== 'cancelada' && <button type="button" className="btn btn-ghost !min-h-[44px] !px-4 text-sm" onClick={() => setJustificante(r)}>{T('Justificante', 'Justificant', 'Receipt')}</button>}
+          {cancelable && confirmando !== r.id && (
+            <button type="button" className="btn btn-ghost !min-h-[44px] !px-4 text-sm" onClick={() => setConfirmando(r.id)}>{T('Cancelar', 'Cancel·lar', 'Cancel')}</button>
+          )}
+        </div>
+        {confirmando === r.id && (
+          <div className="note note-danger flex flex-wrap items-center justify-between gap-3 sm:col-span-2" role="alert">
+            <span className="font-semibold">{T('¿Cancelar esta reserva? Quedará en tu historial.', 'Cancel·lar aquesta reserva? Quedarà al teu historial.', 'Cancel this booking? It will stay in your history.')}</span>
+            <span className="flex gap-2">
+              <button type="button" className="btn btn-ghost !min-h-[44px] !px-4 text-sm" onClick={() => setConfirmando(null)}>{T('No', 'No', 'No')}</button>
+              <button type="button" className="btn btn-primary !min-h-[44px] !px-4 text-sm" disabled={cancelando} onClick={() => cancelar(r.id)}>{T('Sí, cancelar', 'Sí, cancel·lar', 'Yes, cancel')}</button>
+            </span>
+          </div>
+        )}
+      </article>
+    );
+  };
 
   return (
-    <div className="contenedor pagina">
-      <div className="cabecera-pagina">
-        <div>
-          <h1>Mis reservas</h1>
-          {reservas && <p>{conEstado.length} reservas en total · {euros(gastado)} gastados</p>}
-        </div>
-        <Link to="/reservar" className="btn"><Icono nombre="mas" /> Nueva reserva</Link>
+    <section className="band">
+      <div className="wrap max-w-4xl">
+        <Cabecera eyebrow={T('Tu cuenta', 'El teu compte', 'Your account')} titulo={T('Mis reservas', 'Les meves reserves', 'My bookings')}>
+          <Link to="/#reservar" className="btn btn-accent"><span>{T('Nueva reserva', 'Nova reserva', 'New booking')}</span><Flecha /></Link>
+        </Cabecera>
+        {error && <p className="note note-danger mt-6" role="alert">{error}</p>}
+        {!reservas && !error && <Cargando texto={T('Cargando…', 'Carregant…', 'Loading…')} />}
+        {reservas?.length === 0 && (
+          <div className="card mt-8 p-6">
+            <p className="text-lg font-semibold text-ink">{T('Todavía no tienes reservas.', 'Encara no tens reserves.', 'You have no bookings yet.')}</p>
+            <p className="mt-1">{T('Elige parking y horas: en un minuto la tienes.', 'Tria pàrquing i hores: en un minut la tens.', 'Choose a car park and hours: done in a minute.')}</p>
+          </div>
+        )}
+        {proximas.length > 0 && (
+          <>
+            <h2 className="legend mt-10">{T('Próximas', 'Properes', 'Upcoming')}</h2>
+            <div className="mt-4 grid gap-3">{proximas.map((r) => <Tarjeta key={r.id} r={r} />)}</div>
+          </>
+        )}
+        {historial.length > 0 && (
+          <>
+            <h2 className="legend mt-10">{T('Historial', 'Historial', 'History')}</h2>
+            <div className="mt-4 grid gap-3">{historial.map((r) => <Tarjeta key={r.id} r={r} />)}</div>
+          </>
+        )}
       </div>
-
-      {error && <div className="alerta alerta-error"><Icono nombre="alerta" /> {error}</div>}
-
-      <div className="pestanas" role="tablist">
-        <button className={pestana === 'proximas' ? 'activa' : ''} onClick={() => setPestana('proximas')}>
-          Próximas <span className="contador">{proximas.length}</span>
-        </button>
-        <button className={pestana === 'historial' ? 'activa' : ''} onClick={() => setPestana('historial')}>
-          Historial <span className="contador">{historial.length}</span>
-        </button>
-      </div>
-
-      {!reservas && !error && (
-        <div className="lista-reservas">{[1, 2, 3].map((i) => <div key={i} className="skeleton" style={{ height: 110 }} />)}</div>
-      )}
-
-      {reservas && lista.length === 0 && (
-        pestana === 'proximas' ? (
-          <Vacio icono="ticket" titulo="No tienes reservas próximas" texto="Cuando reserves una plaza aparecerá aquí con su ticket.">
-            <Link to="/reservar" className="btn">Reservar una plaza</Link>
-          </Vacio>
-        ) : (
-          <Vacio icono="reloj" titulo="Sin historial todavía" texto="Aquí verás tus reservas pasadas y canceladas." />
-        )
-      )}
-
-      <div className="lista-reservas">
-        {lista.map((r) => (
-          <article key={r.id} className={`tarjeta reserva-tarjeta ${pestana === 'historial' ? 'pasada' : ''}`}>
-            <div className="reserva-plaza">
-              <Icono nombre={TIPOS[r.plaza?.tipo]?.icono || 'coche'} tam={18} />
-              {r.plaza?.codigo}
-            </div>
-            <div className="reserva-info">
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <strong>{fecha(r.inicio)}</strong>
-                <span className={`badge ${ESTADOS[r.estadoActual]?.clase}`}>{ESTADOS[r.estadoActual]?.nombre}</span>
-                {r.estadoActual === 'confirmada' && <small>· empieza {tiempoRelativo(r.inicio)}</small>}
-                {r.estadoActual === 'en_curso' && <small>· termina {tiempoRelativo(r.fin)}</small>}
-              </div>
-              <div className="linea">
-                <Icono nombre="reloj" tam={15} /> {duracion(r.inicio, r.fin)}
-                <span>·</span>
-                <Icono nombre="plantas" tam={15} /> {planta(r.plaza?.planta)}
-                <span>·</span>
-                <span className="matricula" style={{ fontSize: '.78rem' }}>{r.matricula}</span>
-              </div>
-            </div>
-            <div className="reserva-acciones">
-              <strong>{euros(r.precio_total)}</strong>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                {['confirmada', 'en_curso'].includes(r.estadoActual) && (
-                  <button className="btn btn-sec btn-peq" onClick={() => setAAmpliar(r)}><Icono nombre="mas30" tam={15} /> Ampliar</button>
-                )}
-                {['en_curso', 'completada'].includes(r.estadoActual) && (
-                  valoracionDe(r)
-                    ? <span title="Tu valoración"><Estrellas valor={valoracionDe(r).puntuacion} tam={15} /></span>
-                    : <button className="btn btn-sec btn-peq" onClick={() => setAValorar(r)}><Icono nombre="estrella" tam={15} /> Valorar</button>
-                )}
-                {r.estadoActual !== 'cancelada' && (
-                  <Link to={`/reserva/${r.id}`} className="btn btn-sec btn-peq"><Icono nombre="ticket" tam={15} /> Ticket</Link>
-                )}
-                {r.estadoActual === 'confirmada' && (
-                  <button className="btn btn-peligro-sec btn-peq" onClick={() => setACancelar(r)}>Cancelar</button>
-                )}
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-
-      {aAmpliar && (
-        <ModalAmpliar
-          reserva={aAmpliar}
-          onCerrar={() => setAAmpliar(null)}
-          onHecho={() => { setAAmpliar(null); cargar(); }}
-        />
-      )}
-      {aValorar && (
-        <ModalValorar
-          reserva={aValorar}
-          onCerrar={() => setAValorar(null)}
-          onHecho={(v) => {
-            setReservas((rs) => rs.map((x) => (x.id === aValorar.id ? { ...x, valoracion: v } : x)));
-            setAValorar(null);
-          }}
-        />
-      )}
-
-      <Confirmar
-        abierto={!!aCancelar}
-        titulo="¿Cancelar esta reserva?"
-        mensaje={aCancelar ? `Plaza ${aCancelar.plaza?.codigo}, ${fecha(aCancelar.inicio)}. Esta acción no se puede deshacer.` : ''}
-        textoBoton="Sí, cancelar"
-        peligro
-        cargando={cancelando}
-        onConfirmar={cancelar}
-        onCerrar={() => setACancelar(null)}
-      />
-    </div>
+      {justificante && <Justificante reserva={justificante} onCerrar={() => setJustificante(null)} />}
+    </section>
   );
 }

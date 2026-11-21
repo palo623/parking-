@@ -1,107 +1,75 @@
+// Utilidades comunes de formato
+
 export const TIPOS = {
-  normal: { nombre: 'Normal', icono: 'coche', color: '#2563eb', fondo: 'var(--primario-suave)' },
-  electrico: { nombre: 'Eléctrico', icono: 'rayo', color: '#059669', fondo: 'var(--acento-suave)' },
-  moto: { nombre: 'Moto', icono: 'moto', color: '#d97706', fondo: 'var(--aviso-suave)' },
-  discapacitados: { nombre: 'Movilidad reducida', icono: 'accesible', color: '#7c3aed', fondo: 'color-mix(in srgb, #7c3aed 12%, transparent)' },
+  normal: ['Normal', 'Normal', 'Standard'],
+  moto: ['Moto', 'Moto', 'Motorbike'],
+  electrico: ['Eléctrico', 'Elèctric', 'Electric'],
+  discapacitados: ['Movilidad reducida', 'Mobilitat reduïda', 'Reduced mobility'],
 };
 
-export const ESTADOS = {
-  confirmada: { nombre: 'Confirmada', clase: 'badge-azul' },
-  en_curso: { nombre: 'En curso', clase: 'badge-verde' },
-  completada: { nombre: 'Completada', clase: '' },
-  cancelada: { nombre: 'Cancelada', clase: 'badge-rojo' },
-};
+export const GESTION = 0.10; // 10 % de gastos de gestión (igual que el backend)
 
-export const euros = (n) =>
-  Number(n || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+const pad = (n) => String(n).padStart(2, '0');
 
-export const fecha = (iso) =>
-  new Date(iso).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+// 12.5 → "12,50 €"
+export const euros = (n, locale = 'es-ES') =>
+  Number(n || 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
-export const soloFecha = (iso) =>
-  new Date(iso).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+// minutos desde medianoche → "09:30"
+export const hhmm = (m) => pad(Math.floor(m / 60) % 24) + ':' + pad(m % 60);
 
-export const soloHora = (iso) =>
-  new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+// Date → "2026-11-15" (hora local)
+export const isoDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+export const diaIso = (offset) => { const d = new Date(); d.setDate(d.getDate() + offset); return isoDate(d); };
 
-export const planta = (n) => (n === 0 ? 'Planta baja' : n < 0 ? `Sótano ${-n}` : `Planta ${n}`);
+// "2026-11-15" → "dom, 15 nov"
+export const fechaCorta = (iso, locale = 'es-ES') =>
+  new Date(iso + 'T00:00').toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' });
 
-export function duracion(inicio, fin) {
-  const min = Math.round((new Date(fin) - new Date(inicio)) / 60000);
-  if (min <= 0) return '—';
-  const d = Math.floor(min / 1440);
-  const h = Math.floor((min % 1440) / 60);
-  const m = min % 60;
-  return [d && `${d} d`, h && `${h} h`, m && `${m} min`].filter(Boolean).join(' ');
-}
+// ISO completo → "dom, 15 nov, 09:30"
+export const fecha = (iso, locale = 'es-ES') =>
+  new Date(iso).toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-export function tiempoRelativo(iso) {
-  const diff = new Date(iso) - new Date();
-  const abs = Math.abs(diff);
-  const rtf = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
-  if (abs < 3600e3) return rtf.format(Math.round(diff / 60e3), 'minute');
-  if (abs < 86400e3) return rtf.format(Math.round(diff / 3600e3), 'hour');
-  return rtf.format(Math.round(diff / 86400e3), 'day');
-}
+export const hora = (iso, locale = 'es-ES') =>
+  new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 
-// Estado "real" de una reserva teniendo en cuenta la hora actual
-export function estadoReal(r) {
-  if (r.estado !== 'confirmada') return r.estado;
-  const ahora = new Date();
-  if (new Date(r.fin) <= ahora) return 'completada';
-  if (new Date(r.inicio) <= ahora) return 'en_curso';
-  return 'confirmada';
-}
-
-// Valor para <input type="datetime-local"> en hora local
-export function aInputLocal(d) {
-  const p = (x) => String(x).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-
-export function proximaHora(offsetHoras = 0) {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() > 30 ? 60 : 30, 0, 0);
-  d.setHours(d.getHours() + offsetHoras);
+// Fecha "AAAA-MM-DD" + minutos → Date en hora local
+export const aFecha = (dia, minutos) => {
+  const d = new Date(dia + 'T00:00');
+  d.setMinutes(minutos);
   return d;
-}
-
-export const iniciales = (texto = '') =>
-  texto.trim().split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((s) => s[0].toUpperCase()).join('') || '?';
-
-// Descarga un archivo .ics para añadir la reserva al calendario
-export function descargarCalendario(r) {
-  const f = (iso) => new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  const ics = [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Parking//Reservas//ES', 'BEGIN:VEVENT',
-    `UID:reserva-${r.id}@parking`, `DTSTAMP:${f(new Date().toISOString())}`,
-    `DTSTART:${f(r.inicio)}`, `DTEND:${f(r.fin)}`,
-    `SUMMARY:Parking · plaza ${r.plaza?.codigo}`,
-    `DESCRIPTION:Reserva #${r.id} · Matrícula ${r.matricula}`,
-    'END:VEVENT', 'END:VCALENDAR',
-  ].join('\r\n');
-  descargar(`reserva-${r.id}.ics`, ics, 'text/calendar');
-}
-
-export function descargarCSV(nombre, filas) {
-  if (!filas.length) return;
-  const cab = Object.keys(filas[0]);
-  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const csv = [cab.map(esc).join(';'), ...filas.map((f) => cab.map((k) => esc(f[k])).join(';'))].join('\n');
-  descargar(nombre, '﻿' + csv, 'text/csv;charset=utf-8');
-}
-
-function descargar(nombre, contenido, tipo) {
-  const url = URL.createObjectURL(new Blob([contenido], { type: tipo }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = nombre;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-// Lectura/escritura segura de localStorage
-export const almacen = {
-  leer: (k, def = null) => { try { return localStorage.getItem(k) ?? def; } catch { return def; } },
-  guardar: (k, v) => { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } },
 };
+
+export const planta = (n, T = (es) => es) =>
+  n === 0 ? T('Planta baja', 'Planta baixa', 'Ground floor') : n < 0 ? T(`Sótano ${-n}`, `Soterrani ${-n}`, `Basement ${-n}`) : T(`Planta ${n}`, `Planta ${n}`, `Floor ${n}`);
+
+// Matrícula: "1234 bcd" → "1234BCD" y vuelta a "1234 BCD"
+export const normMatricula = (v) => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+export const fmtMatricula = (v) => {
+  const n = normMatricula(v);
+  return /^\d{4}[A-Z]{3}$/.test(n) ? `${n.slice(0, 4)} ${n.slice(4)}` : n;
+};
+
+// Precio con la misma regla que el servidor (cuartos de hora + 10 %)
+export function precioEstimado(precioHora, minutos) {
+  const base = Math.round(Math.ceil(minutos / 15) * 0.25 * precioHora * 100) / 100;
+  const gestion = Math.round(base * GESTION * 100) / 100;
+  return { base, gestion, total: Math.round((base + gestion) * 100) / 100 };
+}
+
+// ---- Matrículas ----
+// España (desde 2000): 4 números + 3 letras sin vocales, Ñ ni Q → «1234 BCD».
+// Matrículas extranjeras o antiguas españolas (p. ej. «T 1234 AB») tienen otros
+// formatos, así que para ellas solo se pide entre 2 y 10 letras o números.
+export const PAISES = {
+  ES: ['España', 'Espanya', 'Spain'],
+  OTRO: ['Otro país o antigua', 'Un altre país o antiga', 'Other country or old'],
+};
+const RE_ES = /^\d{4}[BCDFGHJKLMNPRSTVWXYZ]{3}$/;
+export function validarMatricula(valor, pais = 'ES') {
+  const n = normMatricula(valor);
+  if (pais === 'ES') return RE_ES.test(n);
+  return /^[A-Z0-9]{2,10}$/.test(n);
+}
+// Adivina el país al cargar una matrícula guardada
+export const paisDe = (valor) => (RE_ES.test(normMatricula(valor)) ? 'ES' : 'OTRO');

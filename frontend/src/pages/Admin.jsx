@@ -1,380 +1,223 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
-import { useAuth } from '../context/AuthContext.jsx';
-import { useToast } from '../context/ToastContext.jsx';
-import Icono from '../components/Icono.jsx';
-import Mapa from '../components/Mapa.jsx';
-import Modal from '../components/Modal.jsx';
-import Vacio from '../components/Vacio.jsx';
-import { Agenda, Mensajes, Valoraciones } from './AdminExtra.jsx';
-import { TIPOS, ESTADOS, euros, fecha, planta, estadoReal, descargarCSV } from '../utils.js';
+import { useLang } from '../context/LangContext.jsx';
+import { Cabecera, Cargando, Matricula } from '../components/Comunes.jsx';
+import { TIPOS, euros, fecha, planta } from '../utils.js';
 
-const PLAZA_VACIA = { codigo: '', planta: 0, tipo: 'normal', precio_hora: '2.00' };
+const PLAZA_VACIA = { codigo: '', planta: 0, tipo: 'normal', precio_hora: 2, parking_id: '' };
+const MOTIVOS = {
+  ok: ['Correcto', 'Correcte', 'OK'], exceso: ['Con retraso', 'Amb retard', 'Late'], sin_reserva: ['Sin reserva', 'Sense reserva', 'No booking'],
+  pronto: ['Antes de hora', "Abans d'hora", 'Too early'], dentro: ['Ya dentro', 'Ja a dins', 'Already inside'], no_dentro: ['No estaba dentro', 'No hi era', 'Not inside'],
+};
 
 export default function Admin() {
-  const [pestana, setPestana] = useState('resumen');
-  const [sinLeer, setSinLeer] = useState(0);
-  const contarSinLeer = () => api.admin.mensajes().then((m) => setSinLeer(m.filter((x) => !x.leido).length)).catch(() => {});
-  useEffect(() => { contarSinLeer(); }, []);
-
-  const pestanas = [
-    { id: 'resumen', texto: 'Resumen', icono: 'grafica' },
-    { id: 'agenda', texto: 'Agenda', icono: 'agenda' },
-    { id: 'reservas', texto: 'Reservas', icono: 'ticket' },
-    { id: 'plazas', texto: 'Plazas', icono: 'mapa' },
-    { id: 'usuarios', texto: 'Usuarios', icono: 'usuarios' },
-    { id: 'mensajes', texto: 'Mensajes', icono: 'bandeja', contador: sinLeer },
-    { id: 'valoraciones', texto: 'Valoraciones', icono: 'estrella' },
-  ];
-
-  return (
-    <div className="contenedor pagina">
-      <div className="cabecera-pagina">
-        <div>
-          <h1>Administración</h1>
-          <p>Controla la ocupación, las reservas y las tarifas del parking.</p>
-        </div>
-      </div>
-      <div className="pestanas" role="tablist">
-        {pestanas.map((p) => (
-          <button key={p.id} className={pestana === p.id ? 'activa' : ''} onClick={() => setPestana(p.id)}>
-            <Icono nombre={p.icono} tam={16} /> {p.texto}
-            {p.contador > 0 && <span className="contador contador-alerta">{p.contador}</span>}
-          </button>
-        ))}
-      </div>
-      {pestana === 'resumen' && <Resumen />}
-      {pestana === 'reservas' && <Reservas />}
-      {pestana === 'plazas' && <Plazas />}
-      {pestana === 'usuarios' && <Usuarios />}
-      {pestana === 'agenda' && <Agenda />}
-      {pestana === 'mensajes' && <Mensajes onCambio={contarSinLeer} />}
-      {pestana === 'valoraciones' && <Valoraciones />}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-function Resumen() {
+  const { T, locale, avisar } = useLang();
+  const [pestana, setPestana] = useState('reservas');
   const [resumen, setResumen] = useState(null);
-  const [stats, setStats] = useState(null);
-  const [mapa, setMapa] = useState(null);
+  const [reservas, setReservas] = useState(null);
+  const [plazas, setPlazas] = useState([]);
+  const [accesos, setAccesos] = useState([]);
+  const [parkings, setParkings] = useState([]);
+  const [nueva, setNueva] = useState(PLAZA_VACIA);
+  const [filtro, setFiltro] = useState('');
+  const [editando, setEditando] = useState(null); // { id, valor } del precio que se edita
   const [error, setError] = useState('');
+  const eur = (n) => euros(n, locale);
 
-  useEffect(() => {
-    const ahora = new Date();
-    const enUnMinuto = new Date(ahora.getTime() + 60e3);
-    Promise.all([api.admin.resumen(), api.admin.estadisticas(14), api.mapa(ahora.toISOString(), enUnMinuto.toISOString())])
-      .then(([r, s, m]) => { setResumen(r); setStats(s); setMapa(m); })
-      .catch((e) => setError(e.message));
-  }, []);
+  const cargar = async () => {
+    try {
+      const [r, rs, ps, ac, pk] = await Promise.all([
+        api.admin.resumen(), api.admin.reservas(), api.admin.plazas(), api.admin.accesos(), api.parkings(),
+      ]);
+      setResumen(r); setReservas(rs); setPlazas(ps); setAccesos(ac); setParkings(pk);
+      setNueva((n) => (n.parking_id || !pk.length ? n : { ...n, parking_id: pk[0].id }));
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+  useEffect(() => { cargar(); }, []);
 
-  if (error) return <div className="alerta alerta-error"><Icono nombre="alerta" /> {error}</div>;
-  if (!resumen || !stats) {
-    return <div className="kpis">{[1, 2, 3, 4].map((i) => <div key={i} className="skeleton" style={{ height: 88 }} />)}</div>;
-  }
+  const accion = async (fn, ok) => {
+    setError('');
+    try {
+      await fn();
+      if (ok) avisar(ok);
+      await cargar();
+    } catch (e) {
+      setError(e.message);
+    }
+  };
 
-  const ocupacion = resumen.plazas_activas ? Math.round((resumen.ocupadas_ahora / resumen.plazas_activas) * 100) : 0;
-  const max = Math.max(...stats.ingresos_diarios.map((d) => Number(d.ingresos)), 1);
-  const total14 = stats.ingresos_diarios.reduce((s, d) => s + Number(d.ingresos), 0);
+  const crearPlaza = (e) => {
+    e.preventDefault();
+    accion(async () => {
+      await api.admin.crearPlaza(nueva);
+      setNueva((n) => ({ ...PLAZA_VACIA, parking_id: n.parking_id }));
+    }, T('Plaza añadida', 'Plaça afegida', 'Space added'));
+  };
 
-  const kpis = [
-    { texto: 'Ocupación ahora', valor: `${ocupacion}%`, sub: `${resumen.ocupadas_ahora} de ${resumen.plazas_activas}`, icono: 'coche', color: '#2563eb', fondo: 'var(--primario-suave)' },
-    { texto: 'Reservas pendientes', valor: resumen.reservas_pendientes, icono: 'calendario', color: '#d97706', fondo: 'var(--aviso-suave)' },
-    { texto: 'Ingresos 14 días', valor: euros(total14), icono: 'grafica', color: '#059669', fondo: 'var(--acento-suave)' },
-    { texto: 'Ingresos totales', valor: euros(resumen.ingresos_totales), icono: 'euro', color: '#7c3aed', fondo: 'color-mix(in srgb, #7c3aed 12%, transparent)' },
+  const guardarPrecio = (e) => {
+    e.preventDefault();
+    const { id, valor } = editando;
+    setEditando(null);
+    accion(() => api.admin.editarPlaza(id, { precio_hora: String(valor).replace(',', '.') }), T('Precio actualizado', 'Preu actualitzat', 'Price updated'));
+  };
+
+  const q = filtro.toLowerCase();
+  const reservasFiltradas = (reservas || []).filter((r) =>
+    !q || [r.codigo, r.matricula, r.plaza?.codigo, r.plaza?.parking?.nombre, r.usuario?.nombre].join(' ').toLowerCase().includes(q));
+
+  const kpis = resumen && [
+    [T('Plazas activas', 'Places actives', 'Active spaces'), resumen.plazas_activas],
+    [T('Ocupadas ahora', 'Ocupades ara', 'Occupied now'), resumen.ocupadas_ahora],
+    [T('Reservas pendientes', 'Reserves pendents', 'Upcoming bookings'), resumen.reservas_pendientes],
+    [T('Ingresos', 'Ingressos', 'Revenue'), eur(resumen.ingresos_totales)],
   ];
 
   return (
-    <>
-      <div className="kpis">
-        {kpis.map((k) => (
-          <div key={k.texto} className="tarjeta kpi">
-            <div className="kpi-icono" style={{ background: k.fondo, color: k.color }}><Icono nombre={k.icono} tam={22} /></div>
-            <div>
-              <span>{k.texto}</span>
-              <strong>{k.valor}</strong>
-              {k.sub && <small style={{ display: 'block' }}>{k.sub}</small>}
-            </div>
-          </div>
-        ))}
-      </div>
+    <section className="band">
+      <div className="wrap">
+        <Cabecera eyebrow={T('Panel interno', 'Panell intern', 'Back office')} titulo={T('Administración', 'Administració', 'Admin')} />
+        {error && <p className="note note-danger mt-6" role="alert">{error}</p>}
+        {!reservas && !error && <Cargando texto={T('Cargando…', 'Carregant…', 'Loading…')} />}
 
-      <div className="admin-grid">
-        <div className="tarjeta">
-          <div className="tarjeta-titulo"><h3>Ingresos de los últimos 14 días</h3><small>por fecha de reserva</small></div>
-          <div className="grafica" role="img" aria-label="Gráfica de ingresos diarios">
-            {stats.ingresos_diarios.map((d) => (
-              <div key={d.dia} className="grafica-barra" title={`${new Date(d.dia).toLocaleDateString('es-ES')}: ${euros(d.ingresos)} · ${d.reservas} reservas`}>
-                <div className="barra" style={{ height: `${(Number(d.ingresos) / max) * 100}%` }} />
-                <small>{new Date(d.dia).getDate()}</small>
-              </div>
+        {kpis && (
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {kpis.map(([k, v]) => (
+              <div key={k} className="card p-5"><p className="text-sm font-semibold text-muted">{k}</p><p className="tnum mt-1 font-mono text-3xl font-bold text-ink">{v}</p></div>
             ))}
           </div>
-        </div>
-        <div className="tarjeta">
-          <div className="tarjeta-titulo"><h3>Ocupación por planta</h3><small>ahora</small></div>
-          {stats.ocupacion_plantas.map((p) => (
-            <div key={p.planta} className="planta-barra">
-              <div className="cab"><span>{planta(p.planta)}</span><strong>{p.ocupadas} / {p.total}</strong></div>
-              <div className="progreso"><div style={{ width: `${p.total ? (p.ocupadas / p.total) * 100 : 0}%` }} /></div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {mapa && mapa.length > 0 && (
-        <div className="tarjeta">
-          <div className="tarjeta-titulo"><h3>Estado del parking en este momento</h3></div>
-          <Mapa plazas={mapa} soloLectura mostrarPrecio={false} />
-        </div>
-      )}
-    </>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-function Reservas() {
-  const toast = useToast();
-  const [reservas, setReservas] = useState(null);
-  const [filtro, setFiltro] = useState('');
-  const [estado, setEstado] = useState('');
-
-  const cargar = () => api.admin.reservas().then(setReservas).catch((e) => toast.error(e.message));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { cargar(); }, []);
-
-  const cambiarEstado = async (r, nuevo) => {
-    try {
-      await api.admin.cambiarEstado(r.id, nuevo);
-      toast.ok(`Reserva #${r.id} marcada como ${ESTADOS[nuevo].nombre.toLowerCase()}`);
-      cargar();
-    } catch (e) {
-      toast.error(e.message);
-    }
-  };
-
-  if (!reservas) return <div className="skeleton" style={{ height: 300 }} />;
-
-  const texto = filtro.toLowerCase();
-  const filtradas = reservas
-    .map((r) => ({ ...r, estadoActual: estadoReal(r) }))
-    .filter((r) => !estado || r.estadoActual === estado)
-    .filter((r) => !texto || [r.matricula, r.plaza?.codigo, r.usuario?.nombre, r.usuario?.email, `#${r.id}`].join(' ').toLowerCase().includes(texto));
-
-  const exportar = () =>
-    descargarCSV(`reservas-${new Date().toISOString().slice(0, 10)}.csv`, filtradas.map((r) => ({
-      id: r.id, plaza: r.plaza?.codigo, cliente: r.usuario?.nombre, email: r.usuario?.email, telefono: r.usuario?.telefono,
-      matricula: r.matricula, entrada: new Date(r.inicio).toLocaleString('es-ES'), salida: new Date(r.fin).toLocaleString('es-ES'),
-      total: Number(r.precio_total).toFixed(2).replace('.', ','), estado: ESTADOS[r.estadoActual]?.nombre,
-    })));
-
-  return (
-    <div className="tarjeta">
-      <div className="herramientas">
-        <input placeholder="Buscar matrícula, plaza, cliente o #id…" value={filtro} onChange={(e) => setFiltro(e.target.value)} />
-        <select value={estado} onChange={(e) => setEstado(e.target.value)} aria-label="Filtrar por estado">
-          <option value="">Todos los estados</option>
-          {Object.entries(ESTADOS).map(([k, v]) => <option key={k} value={k}>{v.nombre}</option>)}
-        </select>
-        <span style={{ flex: 1 }} />
-        <button className="btn btn-sec" onClick={exportar} disabled={!filtradas.length}><Icono nombre="descargar" /> Exportar CSV</button>
-      </div>
-      {filtradas.length === 0 ? (
-        <Vacio icono="ticket" titulo="No hay reservas" texto="Cambia los filtros o espera a que lleguen las primeras reservas." />
-      ) : (
-        <div className="tabla-scroll">
-          <table>
-            <thead>
-              <tr><th>#</th><th>Plaza</th><th>Cliente</th><th>Matrícula</th><th>Entrada</th><th>Salida</th><th>Total</th><th>Estado</th></tr>
-            </thead>
-            <tbody>
-              {filtradas.map((r) => (
-                <tr key={r.id}>
-                  <td className="texto-2">{r.id}</td>
-                  <td><strong>{r.plaza?.codigo}</strong></td>
-                  <td>{r.usuario?.nombre || '—'}<br /><small>{r.usuario?.email}</small></td>
-                  <td><span className="matricula" style={{ fontSize: '.75rem' }}>{r.matricula}</span></td>
-                  <td>{fecha(r.inicio)}</td>
-                  <td>{fecha(r.fin)}</td>
-                  <td><strong>{euros(r.precio_total)}</strong></td>
-                  <td>
-                    <select value={r.estado} onChange={(e) => cambiarEstado(r, e.target.value)} aria-label={`Estado de la reserva ${r.id}`}>
-                      <option value="confirmada">Confirmada</option>
-                      <option value="completada">Completada</option>
-                      <option value="cancelada">Cancelada</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-function Plazas() {
-  const toast = useToast();
-  const [plazas, setPlazas] = useState(null);
-  const [nueva, setNueva] = useState(PLAZA_VACIA);
-  const [editando, setEditando] = useState(null);
-
-  const cargar = () => api.admin.plazas().then(setPlazas).catch((e) => toast.error(e.message));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { cargar(); }, []);
-
-  const crear = async (e) => {
-    e.preventDefault();
-    try {
-      const p = await api.admin.crearPlaza({ ...nueva, precio_hora: String(nueva.precio_hora).replace(',', '.') });
-      toast.ok(`Plaza ${p.codigo} creada`);
-      setNueva(PLAZA_VACIA);
-      cargar();
-    } catch (err) {
-      toast.error(err.message);
-    }
-  };
-
-  const guardarEdicion = async (e) => {
-    e.preventDefault();
-    try {
-      await api.admin.editarPlaza(editando.id, {
-        codigo: editando.codigo, planta: editando.planta, tipo: editando.tipo,
-        precio_hora: String(editando.precio_hora).replace(',', '.'),
-      });
-      toast.ok(`Plaza ${editando.codigo} actualizada`);
-      setEditando(null);
-      cargar();
-    } catch (err) {
-      toast.error(err.message);
-    }
-  };
-
-  const alternar = async (p) => {
-    try {
-      await api.admin.editarPlaza(p.id, { activa: !p.activa });
-      toast.info(`Plaza ${p.codigo} ${p.activa ? 'desactivada' : 'activada'}`);
-      cargar();
-    } catch (err) {
-      toast.error(err.message);
-    }
-  };
-
-  if (!plazas) return <div className="skeleton" style={{ height: 300 }} />;
-
-  const campos = (valor, cambiar) => (
-    <>
-      <label className="campo">Código<input value={valor.codigo} onChange={(e) => cambiar({ ...valor, codigo: e.target.value.toUpperCase() })} placeholder="C-01" required /></label>
-      <label className="campo">Planta<input type="number" value={valor.planta} onChange={(e) => cambiar({ ...valor, planta: e.target.value })} /></label>
-      <label className="campo">
-        Tipo
-        <select value={valor.tipo} onChange={(e) => cambiar({ ...valor, tipo: e.target.value })}>
-          {Object.entries(TIPOS).map(([k, t]) => <option key={k} value={k}>{t.nombre}</option>)}
-        </select>
-      </label>
-      <label className="campo">€ / hora<input type="number" step="0.05" min="0" value={valor.precio_hora} onChange={(e) => cambiar({ ...valor, precio_hora: e.target.value })} required /></label>
-    </>
-  );
-
-  return (
-    <>
-      <form className="tarjeta nueva-plaza" onSubmit={crear}>
-        {campos(nueva, setNueva)}
-        <button className="btn"><Icono nombre="mas" /> Añadir plaza</button>
-      </form>
-
-      <div className="tarjeta tabla-scroll">
-        <table>
-          <thead><tr><th>Código</th><th>Planta</th><th>Tipo</th><th>€/hora</th><th>Estado</th><th></th></tr></thead>
-          <tbody>
-            {plazas.map((p) => (
-              <tr key={p.id} className={p.activa ? '' : 'inactiva'}>
-                <td><strong>{p.codigo}</strong></td>
-                <td>{planta(p.planta)}</td>
-                <td><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><Icono nombre={TIPOS[p.tipo]?.icono} tam={16} /> {TIPOS[p.tipo]?.nombre}</span></td>
-                <td>{euros(p.precio_hora)}</td>
-                <td><span className={`badge ${p.activa ? 'badge-verde' : ''}`}>{p.activa ? 'Activa' : 'Desactivada'}</span></td>
-                <td style={{ textAlign: 'right' }}>
-                  <button className="btn btn-ghost btn-peq" onClick={() => setEditando({ ...p })}><Icono nombre="editar" tam={15} /> Editar</button>
-                  <button className="btn btn-sec btn-peq" onClick={() => alternar(p)}>{p.activa ? 'Desactivar' : 'Activar'}</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <Modal abierto={!!editando} titulo={`Editar plaza ${editando?.codigo || ''}`} onCerrar={() => setEditando(null)}>
-        {editando && (
-          <form className="formulario" onSubmit={guardarEdicion} style={{ marginTop: 12 }}>
-            {campos(editando, setEditando)}
-            <div className="modal-acciones">
-              <button type="button" className="btn btn-sec" onClick={() => setEditando(null)}>Cancelar</button>
-              <button className="btn">Guardar</button>
-            </div>
-          </form>
         )}
-      </Modal>
-    </>
-  );
-}
 
-/* ------------------------------------------------------------------ */
-function Usuarios() {
-  const toast = useToast();
-  const { perfil } = useAuth();
-  const [usuarios, setUsuarios] = useState(null);
-  const [filtro, setFiltro] = useState('');
+        {reservas && (
+          <>
+            <div className="tabs mt-8" role="tablist">
+              {[['reservas', T('Reservas', 'Reserves', 'Bookings')], ['accesos', T('Barrera', 'Barrera', 'Barrier')], ['plazas', T('Plazas', 'Places', 'Spaces')]].map(([k, txt]) => (
+                <button key={k} type="button" role="tab" aria-selected={pestana === k} onClick={() => setPestana(k)}>{txt}</button>
+              ))}
+            </div>
 
-  useEffect(() => { api.admin.usuarios().then(setUsuarios).catch((e) => toast.error(e.message)); }, [toast]);
+            {pestana === 'reservas' && (
+              <div className="card mt-4 p-4">
+                <input className="field max-w-md" placeholder={T('Buscar por código, matrícula, parking o cliente…', 'Cerca per codi, matrícula, pàrquing o client…', 'Search by code, plate, car park or customer…')}
+                  aria-label={T('Buscar', 'Cercar', 'Search')} value={filtro} onChange={(e) => setFiltro(e.target.value)} />
+                <div className="mt-4 overflow-x-auto">
+                  <table className="data tnum min-w-[860px]">
+                    <thead><tr><th>{T('Código', 'Codi', 'Code')}</th><th>Parking</th><th>{T('Cliente', 'Client', 'Customer')}</th><th>{T('Matrícula', 'Matrícula', 'Plate')}</th><th>{T('Entrada', 'Entrada', 'Entry')}</th><th>{T('Salida', 'Sortida', 'Exit')}</th><th>Total</th><th>{T('Estado', 'Estat', 'Status')}</th></tr></thead>
+                    <tbody>
+                      {reservasFiltradas.map((r) => (
+                        <tr key={r.id}>
+                          <td className="font-mono font-bold text-ink">{r.codigo || r.id}</td>
+                          <td>{r.plaza?.parking?.nombre || '—'}<br /><span className="text-xs text-muted">{r.plaza?.codigo}</span></td>
+                          <td>{r.usuario?.nombre || '—'}<br /><span className="text-xs text-muted">{r.usuario?.telefono}</span></td>
+                          <td><Matricula valor={r.matricula} className="text-xs" /></td>
+                          <td>{fecha(r.inicio, locale)}</td>
+                          <td>{fecha(r.fin, locale)}</td>
+                          <td className="font-mono font-bold text-ink">{eur(r.precio_total)}</td>
+                          <td>
+                            <select className="field !min-h-[40px] !w-auto" aria-label={T('Estado', 'Estat', 'Status')} value={r.estado}
+                              onChange={(e) => accion(() => api.admin.cambiarEstado(r.id, e.target.value), T('Estado cambiado', 'Estat canviat', 'Status changed'))}>
+                              <option value="confirmada">{T('Confirmada', 'Confirmada', 'Confirmed')}</option>
+                              <option value="completada">{T('Completada', 'Completada', 'Completed')}</option>
+                              <option value="cancelada">{T('Cancelada', 'Cancel·lada', 'Cancelled')}</option>
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                      {reservasFiltradas.length === 0 && <tr><td colSpan={8} className="text-muted">{T('No hay reservas.', 'No hi ha reserves.', 'No bookings.')}</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
-  const cambiarRol = async (u) => {
-    const nuevo = u.rol === 'admin' ? 'cliente' : 'admin';
-    try {
-      const actualizado = await api.admin.cambiarRol(u.id, nuevo);
-      setUsuarios(usuarios.map((x) => (x.id === u.id ? actualizado : x)));
-      toast.ok(`${u.nombre || u.email} ahora es ${nuevo === 'admin' ? 'administrador' : 'cliente'}`);
-    } catch (e) {
-      toast.error(e.message);
-    }
-  };
+            {pestana === 'accesos' && (
+              <div className="card mt-4 overflow-x-auto p-4">
+                <table className="data tnum min-w-[760px]">
+                  <thead><tr><th>{T('Fecha', 'Data', 'Date')}</th><th>{T('Matrícula', 'Matrícula', 'Plate')}</th><th>{T('Tipo', 'Tipus', 'Type')}</th><th>{T('Resultado', 'Resultat', 'Result')}</th><th>{T('Reserva', 'Reserva', 'Booking')}</th><th>{T('Cliente', 'Client', 'Customer')}</th><th>{T('Extra', 'Extra', 'Extra')}</th></tr></thead>
+                  <tbody>
+                    {accesos.map((a) => (
+                      <tr key={a.id}>
+                        <td>{fecha(a.creado_en, locale)}</td>
+                        <td><Matricula valor={a.matricula} className="text-xs" /></td>
+                        <td>{a.tipo === 'salida' ? T('Salida', 'Sortida', 'Exit') : T('Entrada', 'Entrada', 'Entry')}</td>
+                        <td><span className={`tag ${a.permitido ? (a.minutos_exceso ? 'tag-warn' : 'tag-ok') : 'tag-danger'}`}>{T(...(MOTIVOS[a.motivo] || [a.motivo]))}</span></td>
+                        <td className="font-mono">{a.reserva?.codigo || '—'}</td>
+                        <td>{a.usuario?.nombre || '—'}</td>
+                        <td className="font-mono">{a.minutos_exceso ? `${a.minutos_exceso} min · ${eur(a.importe_extra)}` : '—'}</td>
+                      </tr>
+                    ))}
+                    {accesos.length === 0 && <tr><td colSpan={7} className="text-muted">{T('Todavía no hay lecturas de la barrera.', 'Encara no hi ha lectures de la barrera.', 'No barrier readings yet.')}</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-  if (!usuarios) return <div className="skeleton" style={{ height: 300 }} />;
+            {pestana === 'plazas' && (
+              <>
+                <form className="card mt-4 grid items-end gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_.7fr_1.2fr_.8fr_auto]" onSubmit={crearPlaza}>
+                  <label className="label">Parking
+                    <select className="field" value={nueva.parking_id} onChange={(e) => setNueva({ ...nueva, parking_id: e.target.value })} required>
+                      {parkings.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                    </select>
+                  </label>
+                  <label className="label">{T('Código', 'Codi', 'Code')}
+                    <input className="field font-mono uppercase" value={nueva.codigo} onChange={(e) => setNueva({ ...nueva, codigo: e.target.value.toUpperCase() })} placeholder="C-01" required />
+                  </label>
+                  <label className="label">{T('Planta', 'Planta', 'Floor')}
+                    <input className="field" type="number" value={nueva.planta} onChange={(e) => setNueva({ ...nueva, planta: e.target.value })} />
+                  </label>
+                  <label className="label">{T('Tipo', 'Tipus', 'Type')}
+                    <select className="field" value={nueva.tipo} onChange={(e) => setNueva({ ...nueva, tipo: e.target.value })}>
+                      {Object.entries(TIPOS).map(([k, nombres]) => <option key={k} value={k}>{T(...nombres)}</option>)}
+                    </select>
+                  </label>
+                  <label className="label">€/h
+                    <input className="field" type="number" step="0.05" min="0" value={nueva.precio_hora} onChange={(e) => setNueva({ ...nueva, precio_hora: e.target.value })} required />
+                  </label>
+                  <button className="btn btn-accent">{T('Añadir plaza', 'Afegir plaça', 'Add space')}</button>
+                </form>
 
-  const t = filtro.toLowerCase();
-  const lista = usuarios.filter((u) => !t || `${u.nombre} ${u.email} ${u.telefono}`.toLowerCase().includes(t));
-
-  return (
-    <div className="tarjeta">
-      <div className="herramientas">
-        <input placeholder="Buscar por nombre, email o teléfono…" value={filtro} onChange={(e) => setFiltro(e.target.value)} />
-        <span className="texto-2">{usuarios.length} usuarios</span>
+                <div className="card mt-4 overflow-x-auto p-4">
+                  <table className="data tnum min-w-[760px]">
+                    <thead><tr><th>{T('Código', 'Codi', 'Code')}</th><th>Parking</th><th>{T('Planta', 'Planta', 'Floor')}</th><th>{T('Tipo', 'Tipus', 'Type')}</th><th>€/h</th><th>{T('Estado', 'Estat', 'Status')}</th><th><span className="sr-only">{T('Acciones', 'Accions', 'Actions')}</span></th></tr></thead>
+                    <tbody>
+                      {plazas.map((p) => (
+                        <tr key={p.id} className={p.activa ? '' : 'opacity-55'}>
+                          <td className="font-mono font-bold text-ink">{p.codigo}</td>
+                          <td>{p.parking?.nombre || '—'}</td>
+                          <td>{planta(p.planta, T)}</td>
+                          <td>{TIPOS[p.tipo] ? T(...TIPOS[p.tipo]) : p.tipo}</td>
+                          <td>
+                            {editando?.id === p.id ? (
+                              <form className="flex gap-2" onSubmit={guardarPrecio}>
+                                <input className="field !min-h-[40px] w-24 font-mono" autoFocus inputMode="decimal" aria-label={T('Nuevo precio por hora', 'Nou preu per hora', 'New hourly price')}
+                                  value={editando.valor} onChange={(e) => setEditando({ ...editando, valor: e.target.value })} />
+                                <button className="btn btn-primary !min-h-[40px] !px-3 text-sm">OK</button>
+                                <button type="button" className="btn btn-ghost !min-h-[40px] !px-3 text-sm" onClick={() => setEditando(null)}>✕<span className="sr-only">{T('Cancelar', 'Cancel·lar', 'Cancel')}</span></button>
+                              </form>
+                            ) : (
+                              <button type="button" className="min-h-[40px] font-mono font-bold text-link underline underline-offset-4"
+                                title={T('Cambiar precio', 'Canviar preu', 'Change price')} onClick={() => setEditando({ id: p.id, valor: p.precio_hora })}>{eur(p.precio_hora)}</button>
+                            )}
+                          </td>
+                          <td><span className={`tag ${p.activa ? 'tag-ok' : 'tag-danger'}`}>{p.activa ? T('Activa', 'Activa', 'Active') : T('Desactivada', 'Desactivada', 'Disabled')}</span></td>
+                          <td className="text-right">
+                            <button type="button" className="btn btn-ghost !min-h-[40px] !px-3 text-sm"
+                              onClick={() => accion(() => api.admin.editarPlaza(p.id, { activa: !p.activa }))}>
+                              {p.activa ? T('Desactivar', 'Desactivar', 'Disable') : T('Activar', 'Activar', 'Enable')}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </>
+        )}
       </div>
-      <div className="tabla-scroll">
-        <table>
-          <thead><tr><th>Usuario</th><th>Teléfono</th><th>Alta</th><th>Rol</th><th></th></tr></thead>
-          <tbody>
-            {lista.map((u) => (
-              <tr key={u.id}>
-                <td><strong>{u.nombre || '—'}</strong><br /><small>{u.email}</small></td>
-                <td>{u.telefono || '—'}</td>
-                <td>{new Date(u.creado_en).toLocaleDateString('es-ES')}</td>
-                <td><span className={`badge ${u.rol === 'admin' ? 'badge-azul' : ''}`}>{u.rol === 'admin' ? 'Administrador' : 'Cliente'}</span></td>
-                <td style={{ textAlign: 'right' }}>
-                  {u.id !== perfil?.id && (
-                    <button className="btn btn-sec btn-peq" onClick={() => cambiarRol(u)}>
-                      {u.rol === 'admin' ? 'Quitar admin' : 'Hacer admin'}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    </section>
   );
 }
